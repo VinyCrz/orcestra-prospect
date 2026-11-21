@@ -14,5 +14,37 @@
     "site": "https://riojunior.com.br/",
     "instagram": "https://www.instagram.com/riojuniorfederacao/",
     "fonteUrl": "https://riojunior.com.br/rio-junior/empresas"
+  },
+  {
+    "nome": "Juniores — Federação das Empresas Juniores do Espírito Santo",
+    "sigla": "Juniores",
+    "uf": "ES",
+    "site": "https://www.federacaojuniores.com.br/",
+    "instagram": "https://www.instagram.com/juniores.es/",
+    "fonteUrl": "https://www.federacaojuniores.com.br/empresas-juniores"
+  },
+  {
+    "nome": "FEJEMG — Federação das Empresas Juniores do Estado de Minas Gerais",
+    "sigla": "FEJEMG",
+    "uf": "MG",
+    "site": "https://www.fejemg.org.br/",
+    "instagram": "https://www.instagram.com/fejemg/",
+    "fonteUrl": "https://www.fejemg.org.br/"
+  },
+  {
+    "nome": "FEJESP — Federação das Empresas Juniores do Estado de São Paulo",
+    "sigla": "FEJESP",
+    "uf": "SP",
+    "site": "https://fejesp.org.br/",
+    "instagram": "https://www.instagram.com/_fejesp/",
+    "fonteUrl": "https://fejesp.org.br/"
+  },
+  {
+    "nome": "Goiás Júnior — Federação Goiana de Empresas Juniores",
+    "sigla": "Goiás Júnior",
+    "uf": "GO",
+    "site": "https://goiasjunior.org.br/",
+    "instagram": "https://www.instagram.com/goiasjunior/",
+    "fonteUrl": "https://goiasjunior.org.br/"
   }
 ]

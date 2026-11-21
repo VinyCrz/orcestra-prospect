@@ -25,6 +25,10 @@ import { configurarHttp } from './http.js';
 import type { FederacaoColetada, ResultadoFonte } from './base.js';
 import { coletarFejers } from './sources/fejers.js';
 import { coletarRioJunior } from './sources/riojunior.js';
+import { coletarJuniores } from './sources/juniores-es.js';
+import { coletarUnbGuia } from './sources/unb-guia.js';
+import { coletarUfscEbook } from './sources/ufsc-ebook.js';
+import { coletarFederacoesSemLista } from './sources/federacoes-sem-lista.js';
 import { consultarCnpj, type DadosCnpj } from './cnpj.js';
 import { escreverCsv } from './csv.js';
 import { gerarRelatorio } from './relatorio.js';
@@ -37,7 +41,14 @@ const limiteArg = process.argv.find((a) => a.startsWith('--limite-cnpj='));
 const LIMITE_CNPJ = limiteArg ? Number(limiteArg.split('=')[1]) : Infinity;
 const SITUACOES_EXCLUIDAS = ['BAIXADA', 'NULA'];
 
-const FONTES: Array<(c: string) => Promise<ResultadoFonte>> = [coletarFejers, coletarRioJunior];
+const FONTES: Array<(c: string) => Promise<ResultadoFonte>> = [
+  coletarFejers,
+  coletarRioJunior,
+  coletarJuniores,
+  coletarUnbGuia,
+  coletarUfscEbook,
+  coletarFederacoesSemLista,
+];
 
 async function main() {
   configurarHttp({

@@ -1,14 +1,34 @@
 # Relatório da coleta de Empresas Juniores
 
-Gerado em: 2026-11-20T23:20:42.925Z  
+Gerado em: 2026-11-21T00:27:21.012Z  
 Gerado por: `pnpm coleta` (scripts/coleta)
 
 ## Resumo
 
 - **Total de EJs na base:** 1515
 - UFs cobertas: 27 de 27
-- Registros duplicados mesclados: 61
+- Registros duplicados mesclados: 112
 - Excluídas por situação cadastral BAIXADA/NULA na Receita: 12
+
+## Antes × depois (ampliação com novas fontes)
+
+Linha de base: 2026-11-20 (coleta anterior).
+
+| Indicador | Antes | Depois | Variação |
+|---|---:|---:|---:|
+| Total de EJs | 1515 | 1515 | +0 |
+| Com federação confirmada | 140 (9%) | 143 (9%) | +3 |
+| Com IES | 453 (30%) | 494 (33%) | +41 |
+| Com site | 72 (5%) | 91 (6%) | +19 |
+| Com Instagram | 24 (2%) | 53 (3%) | +29 |
+
+Por federação (EJs com federação confirmada pela própria federação):
+
+| Federação | Antes | Depois |
+|---|---:|---:|
+| FEJERS | 65 | 65 |
+| RioJunior | 75 | 75 |
+| Juniores | 0 | 3 |
 
 ## Total por UF
 
@@ -47,9 +67,10 @@ Gerado por: `pnpm coleta` (scripts/coleta)
 
 | Federação | EJs |
 |---|---:|
-| (federação não confirmada em fonte) | 1375 |
+| (federação não confirmada em fonte) | 1372 |
 | RioJunior | 75 |
 | FEJERS | 65 |
+| Juniores | 3 |
 
 > A federação só é preenchida quando a própria federação lista a EJ em seu site. EJs vindas do
 > cadastro nacional (nome + CNPJ + ID Brasil Júnior) ficam com federação vazia até serem confirmadas.
@@ -70,11 +91,11 @@ Gerado por: `pnpm coleta` (scripts/coleta)
 | CNPJ | 1498 | 99% |
 | UF | 1513 | 100% |
 | Cidade | 1498 | 99% |
-| IES | 453 | 30% |
-| Federação | 140 | 9% |
+| IES | 494 | 33% |
+| Federação | 143 | 9% |
 | Ano de fundação (abertura do CNPJ) | 1498 | 99% |
-| Site | 72 | 5% |
-| Instagram | 24 | 2% |
+| Site | 91 | 6% |
+| Instagram | 53 | 3% |
 | LinkedIn | 2 | 0% |
 | E-mail institucional | 53 | 3% |
 | Telefone institucional | 22 | 1% |
@@ -85,10 +106,27 @@ Gerado por: `pnpm coleta` (scripts/coleta)
 
 - **FEJERS — Empresas Juniores (API pública do site)** — https://www.fejers.org.br/empresas-juniores (1512 registros)
 - **RioJunior — As Empresas Juniores** — https://riojunior.com.br/rio-junior/empresas (76 registros)
+- **Juniores (ES) — Catálogo de Empresas Juniores Federadas** — https://www.federacaojuniores.com.br/empresas-juniores (3 registros) — site lista 12 EJs (declara 30 federadas); 3 casadas de forma única com o cadastro nacional (nome + UF do CNPJ); listadas e NÃO incluídas por falta de casamento: TEC Jr, Fucape Jr Consultoria, Pi Júnior, IF Júnior, Prisma Júnior, Lex Consultoria Jurídica Jr, Nutri & Saúde Jr, Impulso Marketing Jr, Conecta Engenharia Jr; conflitos (prevalece o CNPJ): Projeta Júnior: cidade Vitória (site) × Sao Mateus (CNPJ); Ecos Jr: cidade Alegre (site) × Vitoria (CNPJ)
+- **UnB — Guia das Empresas Juniores da UnB (CDT/Pró-Jr, 2022)** — https://cdt.unb.br/images/Empresa_J%C3%BAnior/Portflio_Ejs_1.pdf (32 registros) — 49 fichas; 32 casadas de forma única com o cadastro nacional (DF); sem casamento (não incluídas): Ábaco, Arch, Astrodatum, ConFiE Jr, Ecoflor, Econsult, Engrena, Estat, Facto, Matriz, Museotec, O2, Olé Júnior, Phygeo, Quark Up, Socius, Strategos; sites descartados por domínio sem DNS hoje: AD&M, Avenir, Cráton, Doisnovemeia, Embragea, Endêmica Júnior, Flua, Tecmec, Terapêutica Jr.
+- **UFSC — E-book "Empresas Juniores da UFSC" (2023)** — https://via.ufsc.br/wp-content/uploads/ebooks-EJS-oficial.pdf (16 registros) — 32 fichas lidas; 16 casadas de forma única com o cadastro nacional (SC); sem casamento (não incluídas): C2E, EJEM, EJEN, EJIFAR, INVESTJR., SIMBIOSIS, ANALIZE, CALTECH, COMUNICA!, Uipi, Café & Fita Crepe, TÉTIS, CONEVA Jr, EJEC, Emfisio Jr., Kadima
+- **Federações com site público sem lista de EJs (FEJEMG, FEJESP, Goiás Júnior)** — https://www.fejemg.org.br/ ; https://fejesp.org.br/ ; https://goiasjunior.org.br/ (0 registros) — apenas metadados da federação — FEJEMG: site no ar, sem lista de EJs; FEJESP: site no ar, sem lista de EJs; Goiás Júnior: site no ar, sem lista de EJs
 - **IBGE — API pública de localidades** (https://servicodados.ibge.gov.br/api/v1/localidades/municipios): grafia oficial dos municípios (acentos).
 - **Receita Federal — dados públicos de CNPJ**, consultados via BrasilAPI (https://brasilapi.com.br) com fallback minhareceita.org: razão social, município, UF, data de abertura e situação cadastral. Quadro societário, e-mails e telefones da Receita **não** são armazenados (LGPD).
 
-Federações catalogadas: FEJERS (RS), RioJunior (RJ).
+### Fontes públicas investigadas sem lista de EJs aproveitável
+
+- **Brasil Júnior — site institucional** — https://brasiljunior.org.br/: Next.js sem diretório de EJs/federações: __NEXT_DATA__ vazio (pageProps: {}), sitemap só com páginas institucionais. Os dados dinâmicos (blog, parceiros, seleção de IES) vêm de api.brasiljunior.org.br, que exige token (Authorization) não publicado → não usada. Portal/ID (portal.brasiljunior.org.br, id.brasiljunior.org.br) exigem login → não acessados.
+- **Brasil Júnior — Portal da Transparência** — https://brasiljunior.org.br/portal-da-transparencia: Relatórios de legado, demonstrativos e planejamento em PDFs no Google Drive: agregados, sem lista de EJs/federações.
+- **Brasil Júnior — IES Empreendedoras / MEJ Carreiras** — https://iesempreendedoras.brasiljunior.org.br/ ; https://mej-carreiras.brasiljunior.org.br/: Ranking de IES (não de EJs) e banco de talentos; sem lista de EJs com federação.
+- **API do site da FEJERS — outros endpoints** — https://api.fejers.org.br/: /federations, /business-areas, /services, /events, /docs exigem autenticação (401) → não usados. /ies e /courses são públicos mas cobrem só o RS.
+- **FEJEMG (MG)** — https://www.fejemg.org.br/: Wix de eventos (EMEJ); sitemap sem páginas de EJs; sem lista de federadas.
+- **FEJESP (SP)** — https://fejesp.org.br/: App FlutterFlow estático (eventos/manifesto); bundle sem backend de EJs; sem lista de federadas.
+- **Goiás Júnior (GO)** — https://goiasjunior.org.br/: WordPress com estatísticas agregadas (40 EJs, 8 IES, 10 cidades); wp-json sem post type de EJs (apenas membros de equipe, não coletados por LGPD).
+- **FEJESC (SC)** — https://fejesc.etechjr.com.br/: Site em construção/homologação: post type "empresas-juniores" tem só 5 itens com texto "Lorem ipsum" → descartado. fejesc.com.br não abre (falha TLS/redirecionamento).
+- **Fejepar (PR), RN Júnior, PB Júnior, Concentro (DF), FEJEPE (PE), UNIJr-BA, FEJECE (CE), FEJEA (AL), SERJÚNIOR (SE), Maranhão Júnior, Pará Júnior, FEJEMS (MS)** — domínios listados na Wikipédia (Empresa júnior) e variações: Sem DNS, página padrão de hospedagem ("Bem-vindo a HostGator"), "Em manutenção" ou domínio à venda; nenhum site oficial ativo localizado. Presença só em redes sociais (não coletadas).
+- **Wayback Machine (versões antigas do diretório da Brasil Júnior)** — https://web.archive.org/: Indisponível neste ambiente (acesso bloqueado) e dados seriam defasados → não usado.
+
+Federações catalogadas: FEJERS (RS), RioJunior (RJ), Juniores (ES), FEJEMG (MG), FEJESP (SP), Goiás Júnior (GO).
 
 
 ## Metodologia e regras
@@ -99,6 +137,7 @@ Federações catalogadas: FEJERS (RS), RioJunior (RJ).
 - `anoFundacao` = ano de abertura do CNPJ na Receita.
 - `cidade`/`uf` vêm da federação ou do endereço cadastral do CNPJ.
 - Deduplicação: CNPJ; na falta, nome normalizado + IES normalizada + UF.
+- Fontes sem CNPJ (federações/IES) só são vinculadas a uma EJ quando o nome normalizado casa de forma ÚNICA com o cadastro nacional dentro da mesma UF (UF do CNPJ na Receita); sem casamento único a EJ não é incluída nem alterada.
 - LGPD: apenas dados da organização. Nenhum dado pessoal de membros (tabela Contato vazia).
 - `verificado` = false para todos: nenhuma EJ foi verificada manualmente ainda.
 
@@ -106,7 +145,10 @@ Federações catalogadas: FEJERS (RS), RioJunior (RJ).
 
 - UFs sem nenhuma EJ na base: nenhuma.
 - EJs sem UF identificada: 2 (CNPJ não encontrado/consultado).
-- Federação confirmada só para EJs listadas nos sites da FEJERS (RS) e RioJunior (RJ). Outras federações estaduais não publicam lista estruturada acessível (sites em Wix/Flutter sem dados em HTML, ou fora do ar) — próximos passos: incluir novas fontes no coletor.
-- Núcleo e nº estimado de membros não são publicados de forma estruturada pelas fontes usadas — ficaram vazios.
-- Site/Instagram/LinkedIn: disponíveis principalmente para EJs de RS e RJ.
+- Federação confirmada só para EJs listadas nos sites da Juniores, RioJunior, FEJERS. As demais federações estaduais não publicam lista acessível (ver "Fontes públicas investigadas") — próximos passos: contato direto com as federações (listas/CSV autorizados) ou acesso autorizado à API da Brasil Júnior.
+- Juniores (ES): o site declara 30 EJs federadas e lista 12; só as que casam de forma única com o cadastro nacional entraram. O conteúdo do site está em construção (telefone placeholder, cases ilustrativos), por isso Instagram/áreas/serviços do site não foram usados.
+- IES/site/Instagram de EJs do DF (UnB, guia de 2022) e IES de EJs de SC (UFSC, e-book de 2023) vêm de publicações das próprias universidades; podem estar defasados. Sites cujo domínio não resolve mais foram descartados.
+- Núcleos regionais (ex.: Fejepar, FEJESC nucleada): nenhuma fonte pública lista o núcleo de cada EJ — `nucleo` segue vazio.
+- Nº estimado de membros não é publicado de forma estruturada pelas fontes usadas — ficou vazio.
+- Site/Instagram/LinkedIn: disponíveis principalmente para EJs de RS, RJ e (UnB) DF.
 - O cadastro nacional pode conter EJs que deixaram a rede; a situação cadastral ATIVA na Receita não garante que a EJ siga operando.

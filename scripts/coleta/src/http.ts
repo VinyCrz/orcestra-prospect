@@ -141,3 +141,45 @@ export async function obter(
 export async function obterJson<T>(url: string, o: { cache?: boolean } = {}): Promise<T> {
   return JSON.parse(await obter(url, 'json', o)) as T;
 }
+
+/**
+ * Baixa um arquivo binário (ex.: PDF público) para o cache em disco e devolve o caminho local.
+ * Mesmas regras de `obter`: robots.txt, intervalo por host, identificação genérica e cache.
+ */
+export async function obterArquivo(url: string, extensao = 'bin'): Promise<string> {
+  const chave = createHash('sha1').update(url).digest('hex');
+  const arq = path.join(opcoes.cacheDir, `${chave}.${extensao}`);
+  if (!opcoes.ignorarCache) {
+    try {
+      const s = await stat(arq);
+      if (Date.now() - s.mtimeMs < opcoes.ttlMs) return arq;
+    } catch {
+      /* sem cache */
+    }
+  }
+  if (!(await permitidoPorRobots(url)))
+    throw new BloqueadoError(`Bloqueado por robots.txt: ${url}`);
+  const host = new URL(url).host;
+  let tentativa = 0;
+  for (;;) {
+    await respeitarIntervalo(host, opcoes.intervaloMs);
+    const r = await fetch(url, {
+      headers: { 'User-Agent': USER_AGENT },
+      signal: AbortSignal.timeout(120000),
+    }).catch((e: Error) => e);
+    if (r instanceof Error || r.status === 429 || r.status >= 500) {
+      tentativa++;
+      if (tentativa > 3) {
+        throw new Error(`Falha ao obter ${url}: ${r instanceof Error ? r.message : r.status}`);
+      }
+      await dormir(2000 * 2 ** tentativa);
+      continue;
+    }
+    if (r.status === 401 || r.status === 403)
+      throw new BloqueadoError(`Acesso negado (${r.status}): ${url}`);
+    if (!r.ok) throw new HttpError(r.status, `HTTP ${r.status} em ${url}`);
+    await mkdir(opcoes.cacheDir, { recursive: true });
+    await writeFile(arq, Buffer.from(await r.arrayBuffer()));
+    return arq;
+  }
+}
