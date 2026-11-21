@@ -1,0 +1,38 @@
+{
+  "name": "orcestra-prospect",
+  "private": true,
+  "version": "0.1.0",
+  "packageManager": "pnpm@9.15.9",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "dev": "pnpm --filter @orcestra/shared build && pnpm --parallel --filter @orcestra/api --filter @orcestra/web dev",
+    "build": "pnpm -r build",
+    "test": "pnpm -r --filter '!@orcestra/web' test",
+    "test:e2e": "pnpm --filter @orcestra/web test:e2e",
+    "lint": "pnpm -r lint",
+    "format": "prettier --write .",
+    "db:migrate": "pnpm --filter @orcestra/api db:migrate",
+    "db:migrate:deploy": "pnpm --filter @orcestra/api db:migrate:deploy",
+    "db:seed": "pnpm --filter @orcestra/api db:seed",
+    "coleta": "pnpm --filter @orcestra/coleta coleta"
+  },
+  "devDependencies": {
+    "prettier": "^3.6.2",
+    "typescript": "~5.9.3"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "@prisma/client",
+      "@prisma/engines",
+      "prisma",
+      "argon2",
+      "esbuild",
+      "@nestjs/core",
+      "sharp",
+      "unrs-resolver",
+      "msgpackr-extract"
+    ]
+  }
+}

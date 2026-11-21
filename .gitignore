@@ -1,0 +1,13 @@
+node_modules
+dist
+.next
+.env
+*.log
+coverage
+playwright-report
+test-results
+next-env.d.ts
+*.tsbuildinfo
+data/cache
+backups
+.claude/settings.local.json

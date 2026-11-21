@@ -1,0 +1,18 @@
+[
+  {
+    "nome": "Federação das Empresas Juniores do Estado do Rio Grande do Sul",
+    "sigla": "FEJERS",
+    "uf": "RS",
+    "site": "https://www.fejers.org.br/",
+    "instagram": "https://www.instagram.com/oficialfejers/",
+    "fonteUrl": "https://www.fejers.org.br/empresas-juniores"
+  },
+  {
+    "nome": "RioJunior — Federação das Empresas Juniores do Estado do Rio de Janeiro",
+    "sigla": "RioJunior",
+    "uf": "RJ",
+    "site": "https://riojunior.com.br/",
+    "instagram": "https://www.instagram.com/riojuniorfederacao/",
+    "fonteUrl": "https://riojunior.com.br/rio-junior/empresas"
+  }
+]

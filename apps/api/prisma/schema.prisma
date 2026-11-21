@@ -1,0 +1,433 @@
+// Orce'estra Prospect — schema completo (Etapa 1 já prevê as entidades das próximas etapas).
+
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "linux-musl-openssl-3.0.x", "debian-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Papel {
+  ADMIN
+  GESTOR
+  SDR
+}
+
+enum Regiao {
+  NORTE
+  NORDESTE
+  CENTRO_OESTE
+  SUDESTE
+  SUL
+}
+
+enum StatusProspeccao {
+  NAO_TRABALHADA
+  EM_PROSPECCAO
+  CONTATO_REALIZADO
+  REUNIAO_AGENDADA
+  PROPOSTA_ENVIADA
+  NEGOCIACAO
+  GANHA
+  PERDIDA
+  DESCARTADA
+}
+
+enum TipoTag {
+  AREA
+  CURSO
+  LIVRE
+}
+
+enum Canal {
+  EMAIL
+  WHATSAPP
+  LIGACAO
+  LINKEDIN
+  INSTAGRAM
+  REUNIAO
+  OUTRO
+}
+
+enum TipoInteracao {
+  EMAIL
+  WHATSAPP
+  LIGACAO
+  LINKEDIN
+  INSTAGRAM
+  REUNIAO
+  NOTA
+}
+
+enum DirecaoInteracao {
+  ENTRADA
+  SAIDA
+}
+
+enum StatusTarefa {
+  PENDENTE
+  EM_ANDAMENTO
+  CONCLUIDA
+  CANCELADA
+}
+
+enum Prioridade {
+  BAIXA
+  MEDIA
+  ALTA
+}
+
+enum StatusImportacao {
+  PENDENTE
+  PROCESSANDO
+  CONCLUIDA
+  FALHOU
+}
+
+model Usuario {
+  id            String    @id @default(cuid())
+  nome          String
+  email         String    @unique
+  senhaHash     String
+  papel         Papel     @default(SDR)
+  ativo         Boolean   @default(true)
+  ultimoLoginEm DateTime?
+  criadoEm      DateTime  @default(now())
+  atualizadoEm  DateTime  @updatedAt
+
+  refreshTokens      RefreshToken[]
+  tokensRedefinicao  TokenRedefinicaoSenha[]
+  empresasResponsavel EmpresaJunior[]   @relation("ResponsavelEj")
+  interacoes         Interacao[]
+  tarefasResponsavel Tarefa[]           @relation("TarefaResponsavel")
+  tarefasCriadas     Tarefa[]           @relation("TarefaCriador")
+  cadencias          Cadencia[]
+  templates          TemplateMensagem[]
+  listas             ListaSalva[]
+  importacoes        Importacao[]
+  auditLogs          AuditLog[]
+
+  @@map("usuarios")
+}
+
+model RefreshToken {
+  id         String    @id @default(cuid())
+  usuarioId  String
+  tokenHash  String    @unique
+  expiraEm   DateTime
+  revogadoEm DateTime?
+  criadoEm   DateTime  @default(now())
+  userAgent  String?
+
+  usuario Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+
+  @@index([usuarioId])
+  @@map("refresh_tokens")
+}
+
+model TokenRedefinicaoSenha {
+  id        String    @id @default(cuid())
+  usuarioId String
+  tokenHash String    @unique
+  expiraEm  DateTime
+  usadoEm   DateTime?
+  criadoEm  DateTime  @default(now())
+
+  usuario Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+
+  @@map("tokens_redefinicao_senha")
+}
+
+model Federacao {
+  id           String   @id @default(cuid())
+  nome         String
+  sigla        String   @unique
+  uf           String?  @db.Char(2)
+  site         String?
+  instagram    String?
+  fonteUrl     String?
+  criadoEm     DateTime @default(now())
+  atualizadoEm DateTime @updatedAt
+
+  nucleos  Nucleo[]
+  empresas EmpresaJunior[]
+
+  @@map("federacoes")
+}
+
+model Nucleo {
+  id           String   @id @default(cuid())
+  nome         String
+  federacaoId  String?
+  cidade       String?
+  uf           String?  @db.Char(2)
+  criadoEm     DateTime @default(now())
+  atualizadoEm DateTime @updatedAt
+
+  federacao Federacao?      @relation(fields: [federacaoId], references: [id])
+  empresas  EmpresaJunior[]
+
+  @@unique([nome, federacaoId])
+  @@map("nucleos")
+}
+
+model Ies {
+  id           String   @id @default(cuid())
+  nome         String
+  /// nome normalizado + UF — usado para deduplicar
+  chave        String   @unique
+  sigla        String?
+  cidade       String?
+  uf           String?  @db.Char(2)
+  criadoEm     DateTime @default(now())
+  atualizadoEm DateTime @updatedAt
+
+  empresas EmpresaJunior[]
+
+  @@index([uf])
+  @@map("ies")
+}
+
+model EmpresaJunior {
+  id                    String           @id @default(cuid())
+  nome                  String
+  nomeNormalizado       String
+  /// CNPJ ou nome+IES+UF normalizados (idempotência do seed / deduplicação)
+  chaveDedupe           String           @unique
+  razaoSocial           String?
+  cnpj                  String?          @unique @db.Char(14)
+  iesId                 String?
+  federacaoId           String?
+  nucleoId              String?
+  cidade                String?
+  uf                    String?          @db.Char(2)
+  regiao                Regiao?
+  servicos              String[]         @default([])
+  anoFundacao           Int?
+  membrosEstimados      Int?
+  federada              Boolean          @default(false)
+  site                  String?
+  instagram             String?
+  linkedin              String?
+  facebook              String?
+  emailInstitucional    String?
+  telefoneInstitucional String?
+  situacaoCadastral     String?
+  idBrasilJunior        String?
+  fonteUrl              String
+  fontes                String[]         @default([])
+  coletadoEm            DateTime
+  verificado            Boolean          @default(false)
+  statusProspeccao      StatusProspeccao @default(NAO_TRABALHADA)
+  scoreIcp              Int              @default(0)
+  responsavelId         String?
+  observacoes           String?
+  criadoEm              DateTime         @default(now())
+  atualizadoEm          DateTime         @updatedAt
+
+  ies         Ies?        @relation(fields: [iesId], references: [id])
+  federacao   Federacao?  @relation(fields: [federacaoId], references: [id])
+  nucleo      Nucleo?     @relation(fields: [nucleoId], references: [id])
+  responsavel Usuario?    @relation("ResponsavelEj", fields: [responsavelId], references: [id])
+  tags        Tag[]
+  contatos    Contato[]
+  interacoes  Interacao[]
+  tarefas     Tarefa[]
+
+  @@index([uf])
+  @@index([federacaoId])
+  @@index([nomeNormalizado])
+  @@index([statusProspeccao])
+  @@map("empresas_juniores")
+}
+
+model Tag {
+  id       String   @id @default(cuid())
+  nome     String
+  tipo     TipoTag  @default(LIVRE)
+  /// tipo + nome normalizado
+  chave    String   @unique
+  cor      String?
+  criadoEm DateTime @default(now())
+
+  empresas EmpresaJunior[]
+
+  @@map("tags")
+}
+
+/// Pessoas de contato das EJs. VAZIA na Etapa 1 (LGPD): só será populada com base legal registrada.
+model Contato {
+  id              String    @id @default(cuid())
+  empresaJuniorId String
+  nome            String
+  cargo           String?
+  email           String?
+  telefone        String?
+  linkedin        String?
+  principal       Boolean   @default(false)
+  baseLegal       String?
+  origem          String?
+  optOutEm        DateTime?
+  criadoEm        DateTime  @default(now())
+  atualizadoEm    DateTime  @updatedAt
+
+  empresaJunior EmpresaJunior @relation(fields: [empresaJuniorId], references: [id], onDelete: Cascade)
+  interacoes    Interacao[]
+
+  @@index([empresaJuniorId])
+  @@map("contatos")
+}
+
+model Interacao {
+  id              String           @id @default(cuid())
+  empresaJuniorId String
+  contatoId       String?
+  usuarioId       String?
+  tipo            TipoInteracao
+  direcao         DirecaoInteracao @default(SAIDA)
+  assunto         String?
+  resumo          String?
+  ocorridaEm      DateTime         @default(now())
+  passoCadenciaId String?
+  criadoEm        DateTime         @default(now())
+
+  empresaJunior EmpresaJunior  @relation(fields: [empresaJuniorId], references: [id], onDelete: Cascade)
+  contato       Contato?       @relation(fields: [contatoId], references: [id], onDelete: SetNull)
+  usuario       Usuario?       @relation(fields: [usuarioId], references: [id], onDelete: SetNull)
+  passoCadencia PassoCadencia? @relation(fields: [passoCadenciaId], references: [id], onDelete: SetNull)
+
+  @@index([empresaJuniorId, ocorridaEm])
+  @@map("interacoes")
+}
+
+model Tarefa {
+  id              String       @id @default(cuid())
+  titulo          String
+  descricao       String?
+  status          StatusTarefa @default(PENDENTE)
+  prioridade      Prioridade   @default(MEDIA)
+  venceEm         DateTime?
+  concluidaEm     DateTime?
+  empresaJuniorId String?
+  responsavelId   String?
+  criadoPorId     String?
+  passoCadenciaId String?
+  criadoEm        DateTime     @default(now())
+  atualizadoEm    DateTime     @updatedAt
+
+  empresaJunior EmpresaJunior? @relation(fields: [empresaJuniorId], references: [id], onDelete: Cascade)
+  responsavel   Usuario?       @relation("TarefaResponsavel", fields: [responsavelId], references: [id], onDelete: SetNull)
+  criadoPor     Usuario?       @relation("TarefaCriador", fields: [criadoPorId], references: [id], onDelete: SetNull)
+  passoCadencia PassoCadencia? @relation(fields: [passoCadenciaId], references: [id], onDelete: SetNull)
+
+  @@index([responsavelId, status, venceEm])
+  @@map("tarefas")
+}
+
+model Cadencia {
+  id           String   @id @default(cuid())
+  nome         String
+  descricao    String?
+  ativa        Boolean  @default(true)
+  criadoPorId  String?
+  criadoEm     DateTime @default(now())
+  atualizadoEm DateTime @updatedAt
+
+  criadoPor Usuario?        @relation(fields: [criadoPorId], references: [id], onDelete: SetNull)
+  passos    PassoCadencia[]
+
+  @@map("cadencias")
+}
+
+model PassoCadencia {
+  id           String   @id @default(cuid())
+  cadenciaId   String
+  ordem        Int
+  /// dias após o início da cadência
+  diaOffset    Int      @default(0)
+  canal        Canal
+  templateId   String?
+  instrucoes   String?
+  criadoEm     DateTime @default(now())
+  atualizadoEm DateTime @updatedAt
+
+  cadencia   Cadencia          @relation(fields: [cadenciaId], references: [id], onDelete: Cascade)
+  template   TemplateMensagem? @relation(fields: [templateId], references: [id], onDelete: SetNull)
+  interacoes Interacao[]
+  tarefas    Tarefa[]
+
+  @@unique([cadenciaId, ordem])
+  @@map("passos_cadencia")
+}
+
+model TemplateMensagem {
+  id           String   @id @default(cuid())
+  nome         String
+  canal        Canal
+  assunto      String?
+  corpo        String
+  variaveis    String[] @default([])
+  ativo        Boolean  @default(true)
+  criadoPorId  String?
+  criadoEm     DateTime @default(now())
+  atualizadoEm DateTime @updatedAt
+
+  criadoPor Usuario?        @relation(fields: [criadoPorId], references: [id], onDelete: SetNull)
+  passos    PassoCadencia[]
+
+  @@map("templates_mensagem")
+}
+
+model ListaSalva {
+  id           String   @id @default(cuid())
+  nome         String
+  descricao    String?
+  filtros      Json
+  compartilhada Boolean @default(false)
+  donoId       String
+  criadoEm     DateTime @default(now())
+  atualizadoEm DateTime @updatedAt
+
+  dono Usuario @relation(fields: [donoId], references: [id], onDelete: Cascade)
+
+  @@map("listas_salvas")
+}
+
+model Importacao {
+  id           String           @id @default(cuid())
+  arquivoNome  String
+  tipo         String           @default("EMPRESAS_JUNIORES")
+  status       StatusImportacao @default(PENDENTE)
+  totalLinhas  Int              @default(0)
+  importadas   Int              @default(0)
+  atualizadas  Int              @default(0)
+  ignoradas    Int              @default(0)
+  erros        Json?
+  usuarioId    String?
+  criadoEm     DateTime         @default(now())
+  concluidaEm  DateTime?
+
+  usuario Usuario? @relation(fields: [usuarioId], references: [id], onDelete: SetNull)
+
+  @@map("importacoes")
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  usuarioId  String?
+  acao       String
+  entidade   String
+  entidadeId String?
+  dados      Json?
+  ip         String?
+  criadoEm   DateTime @default(now())
+
+  usuario Usuario? @relation(fields: [usuarioId], references: [id], onDelete: SetNull)
+
+  @@index([entidade, entidadeId])
+  @@index([criadoEm])
+  @@map("audit_logs")
+}
