@@ -7,3 +7,4 @@ export * from './types';
 export * from './funil';
 export * from './score';
 export * from './cadencias';
+export * from './gamificacao';

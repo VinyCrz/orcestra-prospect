@@ -397,6 +397,8 @@ export class EmpresasJunioresService {
       }
       return nova;
     });
+    if (input.statusProspeccao === 'OPORTUNIDADE' && atual.statusProspeccao !== 'OPORTUNIDADE')
+      await this.status.aposMudanca(usuario.id, 'OPORTUNIDADE', 1);
     return this.detalhar(resultado.id, usuario);
   }
 

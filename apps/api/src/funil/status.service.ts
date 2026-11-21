@@ -1,10 +1,11 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, Optional, NotFoundException } from '@nestjs/common';
 import type { MudarStatusInput } from '@orcestra/shared';
 import { Prisma, StatusProspeccao } from '@prisma/client';
 import type { UsuarioAutenticado } from '../auth/auth.types';
 import { AuditService, type RegistroAudit } from '../common/audit.service';
 import { exigirEdicaoEj } from '../empresas-juniores/permissoes';
 import { avancouNoFunil, encerrarInscricoes } from '../cadencias/encerramento';
+import { ConquistasService } from '../gamificacao/conquistas.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { camposDoStatus, type CamposStatus, type EntradaStatus } from './status.regras';
 
@@ -35,7 +36,13 @@ export class StatusService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
+    @Optional() private readonly conquistas?: ConquistasService,
   ) {}
+
+  /** Chamar APÓS o commit de aplicarEmLote (PRIMEIRA_OPORTUNIDADE); nunca lança. */
+  aposMudanca(usuarioId: string, status: string, alteradas: number) {
+    return this.conquistas?.aposMudancaStatus(usuarioId, status, alteradas);
+  }
 
   /** Kanban / PATCH :id/status. Exige permissão de carteira. */
   async mudar(id: string, input: MudarStatusInput, usuario: UsuarioAutenticado) {
@@ -43,7 +50,8 @@ export class StatusService {
     if (!ej) throw new NotFoundException('Empresa Júnior não encontrada');
     exigirEdicaoEj(usuario, ej);
     const entrada: EntradaStatus = { ...input, status: input.status as StatusProspeccao };
-    await this.prisma.$transaction((tx) => this.aplicarEmLote(tx, [ej], entrada, usuario, 'kanban'));
+    const r = await this.prisma.$transaction((tx) => this.aplicarEmLote(tx, [ej], entrada, usuario, 'kanban'));
+    await this.aposMudanca(usuario.id, entrada.status, r.alteradas);
     return this.prisma.empresaJunior.findUniqueOrThrow({
       where: { id },
       select: {

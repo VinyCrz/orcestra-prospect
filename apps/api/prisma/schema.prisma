@@ -184,6 +184,9 @@ model Usuario {
   criteriosScore        CriterioScore[]
   inscricoesResponsavel InscricaoCadencia[]     @relation("InscricaoResponsavel")
   inscricoesFeitas      InscricaoCadencia[]     @relation("InscricaoInscritoPor")
+  metasSemanais         MetaSemanal[]           @relation("MetaDoUsuario")
+  metasDefinidas        MetaSemanal[]           @relation("MetaDefinidaPor")
+  conquistas            ConquistaUsuario[]
 
   @@map("usuarios")
 }
@@ -332,12 +335,14 @@ model EmpresaJunior {
   historicoStatus    HistoricoStatus[]
   inscricoesCadencia InscricaoCadencia[]
 
-  @@index([uf])
+  /// EJs por UF / funil por UF (dashboard, index-only); também serve o filtro só por UF
+  @@index([uf, statusProspeccao])
   @@index([motivoPerdaId])
   /// job diário de retorno de nutrição
   @@index([dataRetornoNutricao])
   @@index([regiao])
-  @@index([federacaoId])
+  /// cobertura por federação (% status ≠ NAO_TRABALHADA, index-only); também serve o filtro só por federação
+  @@index([federacaoId, statusProspeccao])
   @@index([iesId])
   @@index([nucleoId])
   @@index([nomeNormalizado])
@@ -446,9 +451,15 @@ model HistoricoStatus {
   usuario       Usuario?      @relation(fields: [usuarioId], references: [id], onDelete: SetNull)
   motivoPerda   MotivoPerda?  @relation(fields: [motivoPerdaId], references: [id], onDelete: Restrict)
 
+  /// timeline da EJ e "tempo na etapa" (linha anterior da mesma EJ via LATERAL ... ORDER BY criadoEm DESC LIMIT 1)
   @@index([empresaJuniorId, criadoEm])
-  @@index([para, criadoEm])
+  /// funil do período: WHERE criadoEm ∈ [ini, fim) GROUP BY para, count(DISTINCT ej) — index-only
+  @@index([criadoEm, para, empresaJuniorId])
+  /// motivos de perda no período: para = PERDIDA AND criadoEm ∈ período GROUP BY motivoPerdaId — index-only
+  @@index([para, criadoEm, motivoPerdaId])
   @@index([motivoPerdaId])
+  /// FK SetNull + conquista PRIMEIRA_OPORTUNIDADE (usuarioId = :sdr AND para = OPORTUNIDADE)
+  @@index([usuarioId, para])
   @@map("historico_status")
 }
 
@@ -479,8 +490,11 @@ model Interacao {
   inscricaoCadencia InscricaoCadencia? @relation(fields: [inscricaoCadenciaId], references: [id], onDelete: SetNull)
 
   @@index([empresaJuniorId, data])
-  @@index([usuarioId, data])
-  @@index([canal, data])
+  /// visão do SDR: progresso da meta / interações e resposta por canal no período (index-only)
+  @@index([usuarioId, data, canal, resultado])
+  /// visão do time: WHERE data ∈ [ini, fim) GROUP BY usuarioId | canal, resultado (ranking, taxa de resposta) — index-only.
+  /// Substitui (canal, data): sem skip scan no PG16, data à frente atende o período com ou sem filtro de canal.
+  @@index([data, usuarioId, canal, resultado])
   @@index([inscricaoCadenciaId])
   @@map("interacoes")
 }
@@ -763,4 +777,86 @@ model AuditLog {
   @@index([entidade, entidadeId])
   @@index([criadoEm])
   @@map("audit_logs")
+}
+
+/// Meta semanal de interações e reuniões (Etapa 6; só ADMIN configura). Versionada por vigência para que
+/// semanas passadas sejam avaliadas com a meta da época (conquista SEMANA_META_BATIDA).
+/// Meta efetiva do SDR na semana S (segunda-feira, semana ISO em America/Sao_Paulo):
+///   a linha com usuarioId = SDR e maior vigenteDesde ≤ S; se não houver, a GLOBAL (usuarioId null) com
+///   maior vigenteDesde ≤ S. Ou seja: padrão global + override opcional por SDR.
+/// Contagem: interações = Interacao do SDR (usuarioId) com data na semana (qualquer canal/resultado);
+///   reuniões = as que têm resultado = REUNIAO_MARCADA (em qualquer canal). Interações no canal REUNIAO
+///   (reunião realizada) contam como interação, NÃO como reunião — senão a mesma reunião contaria duas vezes
+///   (ao marcar e ao realizar).
+/// No banco: CHECK metas ≥ 0 e vigenteDesde numa segunda-feira; único parcial (vigenteDesde) WHERE usuarioId IS NULL.
+model MetaSemanal {
+  id               String   @id @default(cuid())
+  /// null = padrão global do time
+  usuarioId        String?
+  interacoesSemana Int
+  reunioesSemana   Int
+  /// segunda-feira da primeira semana ISO em que a meta vale
+  vigenteDesde     DateTime @db.Date
+  definidoPorId    String?
+  criadoEm         DateTime @default(now())
+  atualizadoEm     DateTime @updatedAt
+
+  usuario     Usuario? @relation("MetaDoUsuario", fields: [usuarioId], references: [id], onDelete: Cascade)
+  definidoPor Usuario? @relation("MetaDefinidaPor", fields: [definidoPorId], references: [id], onDelete: SetNull)
+
+  /// uma versão por SDR e semana; para a global (NULL) vale o único parcial criado na migration
+  @@unique([usuarioId, vigenteDesde])
+  @@index([definidoPorId])
+  @@map("metas_semanais")
+}
+
+/// Definição de conquista (catálogo; seed cria as iniciais sem sobrescrever edições). A regra de concessão é
+/// código, identificada pela `chave` — desative (ativa = false) em vez de apagar (FK Restrict).
+model Conquista {
+  id           String   @id @default(cuid())
+  /// chave estável usada pelo código (ex.: PRIMEIRA_REUNIAO)
+  chave        String   @unique
+  nome         String
+  descricao    String
+  /// nome do ícone (lucide-react) — opcional
+  icone        String?
+  /// pode ser concedida mais de uma vez (uma por `referencia` em ConquistaUsuario)
+  repetivel    Boolean  @default(false)
+  ativa        Boolean  @default(true)
+  ordem        Int      @default(0)
+  criadoEm     DateTime @default(now())
+  atualizadoEm DateTime @updatedAt
+
+  concessoes ConquistaUsuario[]
+
+  @@index([ativa, ordem])
+  @@map("conquistas")
+}
+
+/// Conquista obtida por um usuário. `referencia` distingue repetíveis e torna a concessão idempotente
+/// (INSERT ... ON CONFLICT DO NOTHING / createMany skipDuplicates):
+///   ''            → não repetível (PRIMEIRA_REUNIAO, PRIMEIRA_OPORTUNIDADE, CEM_INTERACOES)
+///   '2026-W47'    → semana ISO (SEMANA_META_BATIDA; CHECK de formato no banco)
+///   federacaoId   → DEZ_EJS_FEDERACAO_NOVA (uma por federação)
+/// `dados`: contexto da concessão (ex.: { interacaoId }, { semana, interacoes, reunioes, meta }, { federacaoId, ejs }).
+model ConquistaUsuario {
+  id             String   @id @default(cuid())
+  usuarioId      String
+  conquistaChave String
+  referencia     String   @default("")
+  conquistadaEm  DateTime @default(now())
+  dados          Json?
+  criadoEm       DateTime @default(now())
+  atualizadoEm   DateTime @updatedAt
+
+  usuario   Usuario   @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  conquista Conquista @relation(fields: [conquistaChave], references: [chave], onDelete: Restrict, onUpdate: Cascade)
+
+  /// idempotência da concessão; também serve "conquistas do usuário" (usuarioId = :id)
+  @@unique([usuarioId, conquistaChave, referencia])
+  /// feed "conquistas recentes do time" (ORDER BY conquistadaEm DESC LIMIT n)
+  @@index([conquistadaEm(sort: Desc)])
+  /// FK Restrict / "quem já tem a conquista X"
+  @@index([conquistaChave])
+  @@map("conquistas_usuarios")
 }

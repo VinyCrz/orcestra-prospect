@@ -11,6 +11,8 @@ import {
   CalendarCheck,
   KanbanSquare,
   Gauge,
+  LayoutDashboard,
+  Target,
   ListX,
   Loader2,
   LogOut,
@@ -44,6 +46,7 @@ interface ItemNav {
 }
 
 const NAV: ItemNav[] = [
+  { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/empresas-juniores', label: 'Empresas Juniores', icon: Building2 },
   { href: '/funil', label: 'Funil', icon: KanbanSquare },
   { href: '/agenda', label: 'Agenda', icon: CalendarCheck },
@@ -59,6 +62,7 @@ const NAV: ItemNav[] = [
     papeis: ['ADMIN'],
   },
   { href: '/configuracoes/score', label: 'Score de ICP', icon: Gauge, papeis: ['ADMIN'] },
+  { href: '/configuracoes/metas', label: 'Metas do time', icon: Target, papeis: ['ADMIN'] },
 ];
 
 /** Badge com o total de tarefas atrasadas; atualiza a cada 60s e após mutações (invalidação). */

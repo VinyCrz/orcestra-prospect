@@ -142,6 +142,7 @@ export class AcoesEmMassaService {
       },
       { timeout: 60_000, maxWait: 10_000 },
     );
+    if (input.acao === 'MUDAR_STATUS') await this.status.aposMudanca(usuario.id, input.valor ?? '', resultado.alteradas);
     resultado.semMudanca = permitidas.length - resultado.alteradas;
     return resultado;
   }

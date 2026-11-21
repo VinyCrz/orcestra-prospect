@@ -7,6 +7,8 @@
  *  4. Federações (data/federacoes.json), IES e EJs (data/ejs.json) — upsert por chave estável.
  *  5. Templates de mensagem e cadência inicial (Etapa 5) — criados só se não existir um com a mesma
  *     `chave` ou `nome`; nunca sobrescreve textos/passos editados pelo usuário.
+ *  6. Gamificação (Etapa 6): catálogo de conquistas (só cria chaves que faltam) e meta semanal GLOBAL
+ *     padrão (só se não existir nenhuma meta global — versões criadas pelo ADMIN são preservadas).
  */
 import {
   type Canal,
@@ -330,6 +332,78 @@ async function seedCadencias() {
   console.log(`• Cadência inicial criada (${c.passos.length} passos).`);
 }
 
+/** Regras de concessão ficam no código (chave estável); aqui só o catálogo exibido. */
+const CONQUISTAS: {
+  chave: string;
+  nome: string;
+  descricao: string;
+  icone: string;
+  repetivel: boolean;
+}[] = [
+  {
+    chave: 'PRIMEIRA_REUNIAO',
+    nome: 'Primeira reunião',
+    descricao: 'Registrou a primeira interação com resultado "reunião marcada".',
+    icone: 'calendar-check',
+    repetivel: false,
+  },
+  {
+    chave: 'DEZ_EJS_FEDERACAO_NOVA',
+    nome: 'Desbravador de federação',
+    descricao: 'Trabalhou 10 EJs de uma federação em que ainda não tinha atuado (uma vez por federação).',
+    icone: 'map',
+    repetivel: true,
+  },
+  {
+    chave: 'SEMANA_META_BATIDA',
+    nome: 'Semana com meta batida',
+    descricao: 'Bateu as metas semanais de interações e de reuniões (uma vez por semana).',
+    icone: 'trophy',
+    repetivel: true,
+  },
+  {
+    chave: 'PRIMEIRA_OPORTUNIDADE',
+    nome: 'Primeira oportunidade',
+    descricao: 'Levou a primeira EJ até a etapa "Oportunidade" do funil.',
+    icone: 'sparkles',
+    repetivel: false,
+  },
+  {
+    chave: 'CEM_INTERACOES',
+    nome: '100 interações',
+    descricao: 'Registrou 100 interações no total.',
+    icone: 'messages-square',
+    repetivel: false,
+  },
+];
+
+/** Meta global inicial (ajustável pelo ADMIN). Vigência: segunda-feira da semana ISO 2026-W01. */
+const META_GLOBAL_PADRAO = {
+  interacoesSemana: 40,
+  reunioesSemana: 2,
+  vigenteDesde: new Date('2025-12-29T00:00:00Z'),
+};
+
+async function seedGamificacao() {
+  const r = await prisma.conquista.createMany({
+    data: CONQUISTAS.map((c, i) => ({ ...c, ordem: (i + 1) * 10 })),
+    skipDuplicates: true,
+  });
+  console.log(`• Conquistas: ${r.count} criadas (${CONQUISTAS.length - r.count} já existiam).`);
+  const global = await prisma.metaSemanal.findFirst({
+    where: { usuarioId: null },
+    select: { id: true },
+  });
+  if (global) {
+    console.log('• Meta semanal global já existe — mantida.');
+    return;
+  }
+  await prisma.metaSemanal.create({ data: META_GLOBAL_PADRAO });
+  console.log(
+    `• Meta semanal global criada (${META_GLOBAL_PADRAO.interacoesSemana} interações, ${META_GLOBAL_PADRAO.reunioesSemana} reuniões).`,
+  );
+}
+
 async function seedFederacoes() {
   const feds = lerJson<FederacaoJson[]>('federacoes.json');
   const ids = new Map<string, string>();
@@ -479,6 +553,7 @@ async function main() {
   await seedMotivosPerda();
   await seedScore();
   await seedCadencias();
+  await seedGamificacao();
   const ejs = lerJson<EjColetada[]>('ejs.json');
   const feds = await seedFederacoes();
   const tags = await seedTags(ejs);

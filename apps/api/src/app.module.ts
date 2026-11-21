@@ -4,6 +4,8 @@ import { AuthModule } from './auth/auth.module';
 import { AuditModule } from './common/audit.service';
 import { CarteiraModule } from './carteira/carteira.module';
 import { AlertasModule } from './alertas/alertas.module';
+import { DashboardModule } from './dashboard/dashboard.module';
+import { GamificacaoModule } from './gamificacao/gamificacao.module';
 import { ScoreModule } from './score/score.module';
 import { FunilModule } from './funil/funil.module';
 import { InteracoesModule } from './interacoes/interacoes.module';
@@ -47,6 +49,8 @@ import { UsuariosModule } from './usuarios/usuarios.module';
     CadenciasModule,
     AlertasModule,
     ScoreModule,
+    DashboardModule,
+    GamificacaoModule,
   ],
 })
 export class AppModule {}

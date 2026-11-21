@@ -1,6 +1,7 @@
 import {
   ForbiddenException,
   Injectable,
+  Optional,
   NotFoundException,
   UnprocessableEntityException,
   BadRequestException,
@@ -15,6 +16,7 @@ import type { UsuarioAutenticado } from '../auth/auth.types';
 import { AuditService } from '../common/audit.service';
 import { ehResposta, encerrarInscricoes } from '../cadencias/encerramento';
 import { exigirEdicaoEj } from '../empresas-juniores/permissoes';
+import { ConquistasService } from '../gamificacao/conquistas.service';
 import { ScoreService } from '../score/score.service';
 import { PrismaService } from '../prisma/prisma.service';
 
@@ -52,6 +54,7 @@ export class InteracoesService {
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
     private readonly score: ScoreService,
+    @Optional() private readonly conquistas?: ConquistasService,
   ) {}
 
   async listar(ejId: string, q: PaginacaoInput) {
@@ -124,6 +127,13 @@ export class InteracoesService {
         tx,
       );
       return i;
+    });
+    // fora da transação: falha em conquista não afeta o registro (o service já captura e loga)
+    await this.conquistas?.aposInteracao({
+      id: interacao.id,
+      usuarioId: usuario.id,
+      empresaJuniorId: ejId,
+      resultado: interacao.resultado,
     });
     return { ...interacao, sugestaoStatus: sugestaoDeStatus(ej.statusProspeccao) };
   }

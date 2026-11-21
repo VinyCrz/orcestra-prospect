@@ -9,6 +9,7 @@ export const FILAS = {
   IMPORTACOES: 'importacoes',
   ALERTAS: 'alertas',
   SCORE: 'score',
+  GAMIFICACAO: 'gamificacao',
 } as const;
 
 @Module({
@@ -34,6 +35,7 @@ export const FILAS = {
       { name: FILAS.IMPORTACOES },
       { name: FILAS.ALERTAS },
       { name: FILAS.SCORE },
+      { name: FILAS.GAMIFICACAO },
     ),
   ],
   exports: [BullModule],
