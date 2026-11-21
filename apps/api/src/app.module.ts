@@ -3,6 +3,12 @@ import { ConfigModule } from '@nestjs/config';
 import { AuthModule } from './auth/auth.module';
 import { AuditModule } from './common/audit.service';
 import { CarteiraModule } from './carteira/carteira.module';
+import { AlertasModule } from './alertas/alertas.module';
+import { ScoreModule } from './score/score.module';
+import { FunilModule } from './funil/funil.module';
+import { InteracoesModule } from './interacoes/interacoes.module';
+import { MotivosPerdaModule } from './motivos-perda/motivos-perda.module';
+import { TarefasModule } from './tarefas/tarefas.module';
 import { ContatosModule } from './contatos/contatos.module';
 import { ImportacoesModule } from './importacoes/importacoes.module';
 import { ListasSalvasModule } from './listas-salvas/listas-salvas.module';
@@ -33,6 +39,12 @@ import { UsuariosModule } from './usuarios/usuarios.module';
     CarteiraModule,
     ContatosModule,
     ImportacoesModule,
+    FunilModule,
+    MotivosPerdaModule,
+    InteracoesModule,
+    TarefasModule,
+    AlertasModule,
+    ScoreModule,
   ],
 })
 export class AppModule {}

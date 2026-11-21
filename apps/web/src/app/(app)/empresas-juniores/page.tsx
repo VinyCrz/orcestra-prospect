@@ -22,7 +22,7 @@ import { ListasSalvas } from '@/components/ej/listas-salvas';
 import { useFiltrosBase } from '@/components/ej/use-opcoes';
 import { PageHeader } from '@/components/page-header';
 import { StatusBadge } from '@/components/status-badge';
-import { Badge } from '@/components/ui/badge';
+import { FaixaBadge } from '@/components/faixa-badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -120,7 +120,7 @@ function Celula({ id, ej }: { id: string; ej: EjLista }) {
     case 'responsavel':
       return ej.responsavel?.nome ?? <span className="text-muted-foreground">Sem responsável</span>;
     case 'score':
-      return <Badge variant="outline">{ej.scoreIcp}</Badge>;
+      return <FaixaBadge faixa={ej.faixaIcp} score={ej.scoreIcp} />;
     default:
       return <StatusBadge status={ej.statusProspeccao} />;
   }

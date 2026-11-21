@@ -10,6 +10,7 @@ import {
   mascararTelefone,
 } from '../common/audit.service';
 import { exigirEdicaoEj } from '../empresas-juniores/permissoes';
+import { ScoreService } from '../score/score.service';
 import { PrismaService } from '../prisma/prisma.service';
 
 /** Dados pessoais são mascarados no AuditLog (LGPD): registramos QUE mudou, não o valor em claro. */
@@ -58,6 +59,7 @@ export class ContatosService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
+    private readonly score: ScoreService,
   ) {}
 
   private async ejOuErro(id: string) {
@@ -109,6 +111,7 @@ export class ContatosService {
           optOutMotivo: optOut ? (input.optOutMotivo ?? null) : null,
         },
       });
+      await this.score.recalcularEj(ejId, tx);
       const d = diffCampos(snapContato({}), snapContato(c), MASCARAS_CONTATO);
       await this.audit.registrar(
         {
@@ -165,6 +168,7 @@ export class ContatosService {
     return this.prisma.$transaction(async (tx) => {
       if (input.principal) await this.limparPrincipal(tx, atual.empresaJuniorId, id);
       const novo = await tx.contato.update({ where: { id }, data });
+      await this.score.recalcularEj(atual.empresaJuniorId, tx);
       const d = diffCampos(snapContato(atual), snapContato(novo), MASCARAS_CONTATO);
       if (d) {
         await this.audit.registrar(
@@ -188,6 +192,7 @@ export class ContatosService {
     exigirEdicaoEj(usuario, ej);
     await this.prisma.$transaction(async (tx) => {
       await tx.contato.delete({ where: { id } });
+      await this.score.recalcularEj(atual.empresaJuniorId, tx);
       await this.audit.registrar(
         {
           usuarioId: usuario.id,

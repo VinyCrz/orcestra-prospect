@@ -2,7 +2,21 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { Briefcase, Building2, Loader2, LogOut, Menu, Upload, Users, X } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
+import {
+  Briefcase,
+  Building2,
+  CalendarCheck,
+  KanbanSquare,
+  Gauge,
+  ListX,
+  Loader2,
+  LogOut,
+  Menu,
+  Upload,
+  Users,
+  X,
+} from 'lucide-react';
 import { PAPEL_LABEL, type Papel } from '@orcestra/shared';
 import { Logo } from '@/components/logo';
 import { ThemeToggle } from '@/components/theme-toggle';
@@ -15,7 +29,9 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { api } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
+import type { ContadorTarefas } from '@/lib/tipos-funil';
 import { cn } from '@/lib/utils';
 
 interface ItemNav {
@@ -27,10 +43,39 @@ interface ItemNav {
 
 const NAV: ItemNav[] = [
   { href: '/empresas-juniores', label: 'Empresas Juniores', icon: Building2 },
+  { href: '/funil', label: 'Funil', icon: KanbanSquare },
+  { href: '/agenda', label: 'Agenda', icon: CalendarCheck },
   { href: '/carteira', label: 'Carteira', icon: Briefcase, papeis: ['ADMIN', 'GESTOR'] },
   { href: '/importacoes', label: 'Importações', icon: Upload, papeis: ['ADMIN', 'GESTOR'] },
   { href: '/usuarios', label: 'Usuários', icon: Users, papeis: ['ADMIN'] },
+  {
+    href: '/configuracoes/motivos-perda',
+    label: 'Motivos de perda',
+    icon: ListX,
+    papeis: ['ADMIN'],
+  },
+  { href: '/configuracoes/score', label: 'Score de ICP', icon: Gauge, papeis: ['ADMIN'] },
 ];
+
+/** Badge com o total de tarefas atrasadas; atualiza a cada 60s e após mutações (invalidação). */
+function BadgeAtrasadas() {
+  const q = useQuery({
+    queryKey: ['tarefas-contador'],
+    queryFn: () => api<ContadorTarefas>('/tarefas/contador'),
+    refetchInterval: 60_000,
+  });
+  const n = q.data?.atrasadas ?? 0;
+  if (n <= 0) return null;
+  return (
+    <span
+      className="ml-auto grid min-w-5 place-items-center rounded-full bg-destructive px-1.5 text-xs font-semibold text-white"
+      data-testid="badge-atrasadas"
+    >
+      {n}
+      <span className="sr-only"> tarefa{n === 1 ? '' : 's'} atrasada{n === 1 ? '' : 's'}</span>
+    </span>
+  );
+}
 
 function iniciais(nome: string) {
   return nome
@@ -79,6 +124,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           >
             <Icon className="size-4" />
             {label}
+            {href === '/agenda' && <BadgeAtrasadas />}
           </Link>
         );
       })}

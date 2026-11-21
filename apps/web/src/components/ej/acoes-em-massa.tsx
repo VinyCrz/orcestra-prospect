@@ -3,7 +3,14 @@ import { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Download, Loader2, X, Zap } from 'lucide-react';
 import { toast } from 'sonner';
-import { STATUS_PROSPECCAO_LABEL, type AcaoEmMassaInput } from '@orcestra/shared';
+import { STATUS_PROSPECCAO_LABEL, type AcaoEmMassaInput, type StatusProspeccao } from '@orcestra/shared';
+import {
+  CamposExtraStatus,
+  EXTRAS_VAZIOS,
+  extrasParaApi,
+  faltaParaStatus,
+  type ExtrasStatus,
+} from '@/components/funil/status-dialog';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -83,6 +90,7 @@ export function BarraAcoesEmMassa({
   const [dialogo, setDialogo] = useState(false);
   const [acao, setAcao] = useState<Acao>('MUDAR_STATUS');
   const [valor, setValor] = useState<string>('');
+  const [extras, setExtras] = useState<ExtrasStatus>(EXTRAS_VAZIOS);
   const tags = useOpcoesTags();
   const resp = useOpcoesResponsaveis(dialogo && podeAtribuir);
 
@@ -96,6 +104,7 @@ export function BarraAcoesEmMassa({
       const base = {
         acao,
         valor: valor === NENHUM ? null : valor || null,
+        ...(acao === 'MUDAR_STATUS' ? extrasParaApi(valor as StatusProspeccao, extras) : {}),
       };
       const corpo = todosDoFiltro
         ? { ...base, filtros: urlParaFiltros(filtros) }
@@ -110,7 +119,9 @@ export function BarraAcoesEmMassa({
       toast.success(`${r.alteradas} alterada(s), ${r.semMudanca} sem mudança${extra}`);
       void qc.invalidateQueries({ queryKey: ['ejs'] });
       void qc.invalidateQueries({ queryKey: ['opcoes-responsaveis'] });
+      void qc.invalidateQueries({ queryKey: ['kanban'] });
       setDialogo(false);
+      setExtras(EXTRAS_VAZIOS);
       onLimpar();
     },
     onError: (e) => toast.error(e instanceof ApiError ? e.message : 'Erro ao aplicar a ação'),
@@ -133,7 +144,9 @@ export function BarraAcoesEmMassa({
     onError: (e) => toast.error(e instanceof ApiError ? e.message : 'Erro ao exportar'),
   });
 
-  const valorValido = acao === 'ATRIBUIR_RESPONSAVEL' ? valor !== '' : valor !== '' && valor !== NENHUM;
+  const valorValido =
+    (acao === 'ATRIBUIR_RESPONSAVEL' ? valor !== '' : valor !== '' && valor !== NENHUM) &&
+    (acao !== 'MUDAR_STATUS' || !faltaParaStatus(valor as StatusProspeccao, extras));
 
   return (
     <>
@@ -182,6 +195,7 @@ export function BarraAcoesEmMassa({
                 onValueChange={(v) => {
                   setAcao(v as Acao);
                   setValor('');
+                  setExtras(EXTRAS_VAZIOS);
                 }}
               >
                 <SelectTrigger id="massa-acao">
@@ -204,7 +218,13 @@ export function BarraAcoesEmMassa({
                     ? 'Novo status'
                     : 'Tag'}
               </Label>
-              <Select value={valor} onValueChange={setValor}>
+              <Select
+                value={valor}
+                onValueChange={(v) => {
+                  setValor(v);
+                  setExtras(EXTRAS_VAZIOS);
+                }}
+              >
                 <SelectTrigger id="massa-valor">
                   <SelectValue placeholder="Selecione…" />
                 </SelectTrigger>
@@ -234,6 +254,14 @@ export function BarraAcoesEmMassa({
                 </SelectContent>
               </Select>
             </div>
+            {acao === 'MUDAR_STATUS' && (
+              <CamposExtraStatus
+                status={valor as StatusProspeccao | ''}
+                valor={extras}
+                onChange={setExtras}
+                prefixo="massa"
+              />
+            )}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setDialogo(false)}>

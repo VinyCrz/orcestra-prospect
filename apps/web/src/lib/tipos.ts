@@ -1,5 +1,7 @@
 import type {
   BaseLegal,
+  DetalheCriterio,
+  FaixaIcp,
   CargoContato,
   EmpresaJuniorResumo,
   FiltrosEj,
@@ -18,6 +20,7 @@ export interface TagRef {
 
 /** Item da lista de EJs (Etapa 2): resumo + responsável, tags e permissão de edição. */
 export interface EjLista extends EmpresaJuniorResumo {
+  faixaIcp: FaixaIcp | null;
   regiao: string | null;
   federada: boolean;
   membrosEstimados: number | null;
@@ -67,6 +70,9 @@ export interface EmpresaJuniorDetalhe {
   verificado: boolean;
   statusProspeccao: StatusProspeccao;
   scoreIcp: number;
+  faixaIcp: FaixaIcp | null;
+  scoreDetalhe: DetalheCriterio[] | null;
+  scoreCalculadoEm: string | null;
   observacoes: string | null;
   atualizadoEm: string;
   ies: {

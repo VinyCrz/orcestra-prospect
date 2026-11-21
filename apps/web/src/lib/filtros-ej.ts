@@ -9,6 +9,7 @@ export const CHAVES_LISTA = [
   'tagIds',
   'status',
   'responsavelId',
+  'faixaIcp',
 ] as const;
 export const CHAVES_NUM = ['membrosMin', 'membrosMax', 'scoreMin', 'scoreMax'] as const;
 export const CHAVES_FILTRO = ['busca', ...CHAVES_LISTA, ...CHAVES_NUM, 'federada'] as const;

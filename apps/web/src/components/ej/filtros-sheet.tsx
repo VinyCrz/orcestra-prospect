@@ -1,7 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { SlidersHorizontal } from 'lucide-react';
-import { REGIAO_LABEL, STATUS_PROSPECCAO_LABEL, UFS, type Regiao } from '@orcestra/shared';
+import { FAIXAS_ICP, REGIAO_LABEL, STATUS_PROSPECCAO_LABEL, UFS, type Regiao } from '@orcestra/shared';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { CheckGroup } from '@/components/ui/check-group';
@@ -169,6 +169,12 @@ export function FiltrosSheet({
               })),
             ]}
             carregando={resp.isLoading}
+          />
+          <CheckGroup
+            legenda="Faixa de ICP"
+            valor={listaDe(rascunho.faixaIcp)}
+            onChange={(v) => set('faixaIcp', juntar(v))}
+            opcoes={FAIXAS_ICP.map((f) => ({ valor: f, rotulo: `Faixa ${f}` }))}
           />
           <div className="grid gap-2">
             <Label htmlFor="f-federada">Federada</Label>

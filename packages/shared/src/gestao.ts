@@ -13,6 +13,7 @@ import {
   normalizarUrl,
   regiaoDaUf,
 } from './normalize';
+import { FAIXAS_ICP } from './score';
 import { UF_SIGLAS } from './uf';
 
 // ---------------------------------------------------------------------------------------------
@@ -98,6 +99,8 @@ export const filtrosEjSchema = z.object({
   status: lista(z.enum(STATUS_PROSPECCAO)),
   scoreMin: intQuery(0, 100),
   scoreMax: intQuery(0, 100),
+  /** Faixa do score de ICP (A/B/C/D): EJ em QUALQUER uma das faixas */
+  faixaIcp: lista(z.enum(FAIXAS_ICP)),
   /** IDs de usuário e/ou "nenhum" (sem responsável) e/ou "eu" (usuário logado) */
   responsavelId: lista(z.string()),
 });
@@ -182,7 +185,17 @@ export const criarEjSchema = z.object({
 export type CriarEjInput = z.infer<typeof criarEjSchema>;
 
 export const atualizarEjSchema = z
-  .object({ ...ejCampos, nome: ejCampos.nome.optional() })
+  .object({
+    ...ejCampos,
+    nome: ejCampos.nome.optional(),
+    /** PERDIDA exige motivoPerdaId; NUTRICAO exige dataRetornoNutricao (AAAA-MM-DD) */
+    motivoPerdaId: z.string().min(1).max(64).nullish(),
+    motivoPerdaDetalhe: texto(500),
+    dataRetornoNutricao: z
+      .string()
+      .regex(/^\d{4}-\d{2}-\d{2}$/, 'Use o formato AAAA-MM-DD')
+      .nullish(),
+  })
   .refine((v) => Object.values(v).some((x) => x !== undefined), 'Informe ao menos um campo');
 export type AtualizarEjInput = z.infer<typeof atualizarEjSchema>;
 
@@ -232,6 +245,13 @@ export const acaoEmMassaSchema = z
     acao: z.enum(ACOES_EM_MASSA),
     /** ATRIBUIR_RESPONSAVEL: id do usuário (ou null p/ remover); MUDAR_STATUS: status; tags: id da tag */
     valor: z.string().min(1).nullable(),
+    /** MUDAR_STATUS -> PERDIDA: motivo obrigatório; -> NUTRICAO: data de retorno (AAAA-MM-DD) obrigatória */
+    motivoPerdaId: z.string().min(1).max(64).nullish(),
+    motivoPerdaDetalhe: z.string().trim().max(500).nullish(),
+    dataRetornoNutricao: z
+      .string()
+      .regex(/^\d{4}-\d{2}-\d{2}$/)
+      .nullish(),
   })
   .superRefine((v, ctx) => {
     if (!v.ids && !v.filtros)

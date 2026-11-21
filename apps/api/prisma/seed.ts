@@ -1,9 +1,12 @@
 /**
  * Seed idempotente:
  *  1. ADMIN inicial (ADMIN_NOME / ADMIN_EMAIL / ADMIN_SENHA do .env) — criado se não existir.
- *  2. Federações (data/federacoes.json), IES e EJs (data/ejs.json) — upsert por chave estável.
+ *  2. Motivos de perda iniciais — criados só se não existir um com a mesma `chave` ou `nome`;
+ *     nunca sobrescreve nome/ativo/ordem editados pelo ADMIN.
+ *  3. Score de ICP: ConfigScore "default" e critérios — só cria o que falta.
+ *  4. Federações (data/federacoes.json), IES e EJs (data/ejs.json) — upsert por chave estável.
  */
-import { PrismaClient, type Regiao, TipoTag } from '@prisma/client';
+import { type CriterioIcp, Prisma, PrismaClient, type Regiao, TipoTag } from '@prisma/client';
 import { chaveDedupe, chaveNome, normalizarNomeIes, type EjColetada } from '@orcestra/shared';
 import * as argon2 from 'argon2';
 import { existsSync, readFileSync } from 'node:fs';
@@ -47,6 +50,141 @@ async function seedAdmin() {
     },
   });
   console.log(`• ADMIN ${email} criado.`);
+}
+
+const MOTIVOS_PERDA: { chave: string; nome: string }[] = [
+  { chave: 'sem-orcamento', nome: 'Sem orçamento' },
+  { chave: 'sem-interesse', nome: 'Sem interesse no momento' },
+  { chave: 'solucao-similar', nome: 'Já usa solução similar' },
+  { chave: 'sem-resposta', nome: 'Sem resposta' },
+  { chave: 'ej-inativa', nome: 'EJ inativa' },
+  { chave: 'outro', nome: 'Outro' },
+];
+
+async function seedMotivosPerda() {
+  let criados = 0;
+  for (const [i, m] of MOTIVOS_PERDA.entries()) {
+    const existe = await prisma.motivoPerda.findFirst({
+      where: { OR: [{ chave: m.chave }, { nome: m.nome }] },
+      select: { id: true },
+    });
+    if (existe) continue;
+    await prisma.motivoPerda.create({ data: { ...m, ordem: (i + 1) * 10 } });
+    criados++;
+  }
+  console.log(
+    `• Motivos de perda: ${criados} criados (${MOTIVOS_PERDA.length - criados} já existiam).`,
+  );
+}
+
+/**
+ * Critérios do score de ICP (pesos somam 100). Parâmetros neutros: sem áreas, regiões/UFs ou
+ * preferência de IES definidas — esses três nascem inativos (o cálculo normaliza pelos pesos
+ * ativos) até o ADMIN configurá-los. Só cria o que falta; nunca sobrescreve edições.
+ */
+const CRITERIOS_SCORE: {
+  chave: CriterioIcp;
+  nome: string;
+  descricao: string;
+  peso: number;
+  ativo: boolean;
+  parametros: Prisma.InputJsonObject;
+}[] = [
+  {
+    chave: 'FEDERADA',
+    nome: 'Federada',
+    descricao: 'EJ vinculada a uma federação.',
+    peso: 15,
+    ativo: true,
+    parametros: {},
+  },
+  {
+    chave: 'FAIXA_MEMBROS',
+    nome: 'Faixa de nº de membros',
+    descricao: 'Percentual do peso conforme a faixa de membros estimados (sem dado = 0).',
+    peso: 15,
+    ativo: true,
+    parametros: {
+      faixas: [
+        { min: 0, max: 9, percentual: 25 },
+        { min: 10, max: 19, percentual: 50 },
+        { min: 20, max: 39, percentual: 75 },
+        { min: 40, max: null, percentual: 100 },
+      ],
+    },
+  },
+  {
+    chave: 'AREAS_ALINHADAS',
+    nome: 'Áreas de atuação alinhadas',
+    descricao: 'Tem ao menos uma das tags de área selecionadas.',
+    peso: 10,
+    ativo: false,
+    parametros: { tagIds: [] },
+  },
+  {
+    chave: 'REGIAO_PRIORITARIA',
+    nome: 'Região/UF prioritária',
+    descricao: 'EJ em região ou UF prioritária.',
+    peso: 10,
+    ativo: false,
+    parametros: { regioes: [], ufs: [] },
+  },
+  {
+    chave: 'IES_PUBLICA_PRIVADA',
+    nome: 'IES pública/privada',
+    descricao: 'Natureza da IES igual à preferida.',
+    peso: 5,
+    ativo: false,
+    parametros: { preferencia: null },
+  },
+  {
+    chave: 'TEM_SITE_REDES',
+    nome: 'Tem site/redes',
+    descricao: 'Possui site ou redes sociais institucionais.',
+    peso: 10,
+    ativo: true,
+    parametros: { campos: ['site', 'instagram', 'linkedin', 'facebook'], minimo: 1 },
+  },
+  {
+    chave: 'TEM_DECISOR',
+    nome: 'Contato decisor mapeado',
+    descricao: 'Contato ativo (sem opt-out) em cargo de decisão.',
+    peso: 15,
+    ativo: true,
+    parametros: { cargos: ['PRESIDENTE', 'DIR_COMERCIAL', 'DIR_GENTE_GESTAO', 'DIR_PROJETOS'] },
+  },
+  {
+    chave: 'INTERACAO_30D',
+    nome: 'Interação recente',
+    descricao: 'Interação registrada nos últimos N dias.',
+    peso: 10,
+    ativo: true,
+    parametros: { dias: 30 },
+  },
+  {
+    chave: 'DADOS_VERIFICADOS',
+    nome: 'Dados verificados',
+    descricao: 'Cadastro marcado como verificado.',
+    peso: 10,
+    ativo: true,
+    parametros: {},
+  },
+];
+
+async function seedScore() {
+  // update vazio: limiares/versão editados pelo ADMIN são preservados
+  await prisma.configScore.upsert({
+    where: { id: 'default' },
+    create: { id: 'default' },
+    update: {},
+  });
+  const r = await prisma.criterioScore.createMany({
+    data: CRITERIOS_SCORE.map((c, i) => ({ ...c, ordem: (i + 1) * 10 })),
+    skipDuplicates: true,
+  });
+  console.log(
+    `• Critérios de score: ${r.count} criados (${CRITERIOS_SCORE.length - r.count} já existiam).`,
+  );
 }
 
 async function seedFederacoes() {
@@ -195,6 +333,8 @@ async function seedEjs(
 async function main() {
   console.log(`Seed — dados em ${DATA}`);
   await seedAdmin();
+  await seedMotivosPerda();
+  await seedScore();
   const ejs = lerJson<EjColetada[]>('ejs.json');
   const feds = await seedFederacoes();
   const tags = await seedTags(ejs);

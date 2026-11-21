@@ -47,6 +47,7 @@ const FILTROS_DOC = [
   { name: 'status', description: `Multi: ${STATUS_PROSPECCAO.join(', ')}` },
   { name: 'scoreMin', type: Number },
   { name: 'scoreMax', type: Number },
+  { name: 'faixaIcp', description: 'Multi: A, B, C, D (faixa do score de ICP)' },
   { name: 'responsavelId', description: 'Multi: ids, `nenhum` (sem responsável) e/ou `eu`' },
 ];
 const docFiltros = () =>

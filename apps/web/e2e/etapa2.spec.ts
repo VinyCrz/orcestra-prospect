@@ -168,7 +168,7 @@ test('ações em massa: mudar status e adicionar tag só nas EJs de teste', asyn
   await page.locator('#massa-acao').click();
   await page.getByRole('option', { name: 'Mudar status' }).click();
   await page.locator('#massa-valor').click();
-  await page.getByRole('option', { name: 'Em prospecção' }).click();
+  await page.getByRole('option', { name: 'Pesquisada' }).click();
   await page.getByRole('dialog').getByRole('button', { name: 'Aplicar' }).click();
   await expect(page.getByText(/\d+ alterada\(s\)/).first()).toBeVisible();
   await expect(page.getByTestId('barra-massa')).toHaveCount(0);
@@ -178,7 +178,7 @@ test('ações em massa: mudar status e adicionar tag só nas EJs de teste', asyn
   );
   const itens = lista.items;
   expect(itens.length).toBe(total);
-  expect(itens.every((e) => e.statusProspeccao === 'EM_PROSPECCAO')).toBeTruthy();
+  expect(itens.every((e) => e.statusProspeccao === 'PESQUISADA')).toBeTruthy();
 
   // tag
   await page.getByLabel('Selecionar todas as EJs da página').check();

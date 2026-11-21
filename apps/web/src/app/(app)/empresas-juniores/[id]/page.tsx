@@ -15,7 +15,11 @@ import {
   Phone,
 } from 'lucide-react';
 import { formatarCnpj, REGIAO_LABEL, type Regiao } from '@orcestra/shared';
+import { AcoesFunilEj } from '@/components/ej/acoes-funil';
+import { Timeline } from '@/components/ej/timeline';
 import { SecaoContatos } from '@/components/ej/contatos';
+import { FaixaBadge } from '@/components/faixa-badge';
+import { CardScore } from '@/components/ej/card-score';
 import { StatusBadge } from '@/components/status-badge';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -139,15 +143,16 @@ export default function DetalheEjPage({ params }: { params: Promise<{ id: string
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          {ej.podeEditar && <AcoesFunilEj ejId={ej.id} status={ej.statusProspeccao} />}
           {ej.podeEditar && (
-            <Button asChild size="sm">
+            <Button asChild size="sm" variant="outline">
               <Link href={`/empresas-juniores/${ej.id}/editar`}>
                 <Pencil /> Editar
               </Link>
             </Button>
           )}
           <StatusBadge status={ej.statusProspeccao} />
-          <Badge variant="outline">Score ICP: {ej.scoreIcp}</Badge>
+          <FaixaBadge faixa={ej.faixaIcp} score={ej.scoreIcp} />
           {ej.federacao && <Badge variant="brand">{ej.federacao.sigla}</Badge>}
         </div>
       </div>
@@ -182,7 +187,11 @@ export default function DetalheEjPage({ params }: { params: Promise<{ id: string
             </CardContent>
           </Card>
 
+          <CardScore ej={ej} />
+
           <SecaoContatos ejId={ej.id} podeEditar={ej.podeEditar} />
+
+          <Timeline ejId={ej.id} />
 
           <Card>
             <CardHeader>

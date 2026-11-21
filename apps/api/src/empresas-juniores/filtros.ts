@@ -34,6 +34,7 @@ export function montarWhere(f: FiltrosEj, usuarioId: string): Prisma.EmpresaJuni
   if (f.status?.length) and.push({ statusProspeccao: { in: f.status } });
   if (f.scoreMin !== undefined) and.push({ scoreIcp: { gte: f.scoreMin } });
   if (f.scoreMax !== undefined) and.push({ scoreIcp: { lte: f.scoreMax } });
+  if (f.faixaIcp?.length) and.push({ faixaIcp: { in: f.faixaIcp } });
   if (f.responsavelId?.length) {
     const ids = f.responsavelId.map((v) => (v === FILTRO_EU ? usuarioId : v));
     and.push(comNulo('responsavelId', ids, FILTRO_NENHUM));

@@ -3,6 +3,7 @@ import { chaveDedupe, chaveNome, regiaoDaUf } from '@orcestra/shared';
 import { Prisma, Regiao } from '@prisma/client';
 import { AuditService, diffCampos } from '../common/audit.service';
 import { MASCARAS_CONTATO, snapContato } from '../contatos/contatos.service';
+import { ScoreService } from '../score/score.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { carregarIndice, resolverEjDoContato } from './indice';
 import {
@@ -67,7 +68,17 @@ export class ImportacoesExecutor {
   constructor(
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
+    private readonly score: ScoreService,
   ) {}
+
+  /** EJs criadas/alteradas (ou com contato alterado) por importação; recalculadas ao final. */
+  private readonly tocadas = new Map<string, Set<string>>();
+
+  private marcar(importacaoId: string, ejId: string) {
+    let s = this.tocadas.get(importacaoId);
+    if (!s) this.tocadas.set(importacaoId, (s = new Set()));
+    s.add(ejId);
+  }
 
   /**
    * Executa (ou retoma) a importação. Idempotente: concluída/cancelada não reexecuta; após falha
@@ -111,6 +122,10 @@ export class ImportacoesExecutor {
       await this.processarLote(imp.id, imp.usuarioId, imp.tipo, imp.estrategiaDuplicados, lote, fim, cont, relatorio);
     }
 
+    // Score: EJs tocadas nesta execução + qualquer EJ ainda sem score na versão atual (retomadas/criadas).
+    await this.score.recalcularEjs([...(this.tocadas.get(importacaoId) ?? [])]);
+    this.tocadas.delete(importacaoId);
+    await this.score.recalcularEmMassa(false);
     await this.prisma.importacao.update({
       where: { id: importacaoId },
       data: { status: 'CONCLUIDA', concluidaEm: new Date(), processadas: linhas.length },
@@ -266,6 +281,7 @@ export class ImportacoesExecutor {
       }
       const r = await this.mesclarEj(tx, indice, ref.id, dados);
       if (r.erro) return [{ mensagem: r.erro }];
+      if (r.alterou) this.marcar(importacaoId, ref.id);
       if (r.alterou) c.atualizadas++;
       else c.ignoradas++;
       return [];
@@ -309,6 +325,7 @@ export class ImportacoesExecutor {
       select: { id: true },
     });
     indice.adicionar(refDeLinha(criada.id, dados));
+    this.marcar(importacaoId, criada.id);
     c.importadas++;
     return [];
   }
@@ -460,6 +477,7 @@ export class ImportacoesExecutor {
         },
         tx,
       );
+      this.marcar(importacaoId, ref.id);
       c.atualizadas++;
       return [];
     }
@@ -490,6 +508,7 @@ export class ImportacoesExecutor {
       },
       tx,
     );
+    this.marcar(importacaoId, ref.id);
     c.importadas++;
     return [];
   }

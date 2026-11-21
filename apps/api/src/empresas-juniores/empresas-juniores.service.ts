@@ -19,6 +19,8 @@ import {
 import { Prisma, Regiao, StatusProspeccao } from '@prisma/client';
 import type { UsuarioAutenticado } from '../auth/auth.types';
 import { AuditService, diffCampos } from '../common/audit.service';
+import { ScoreService } from '../score/score.service';
+import { StatusService } from '../funil/status.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { montarOrderBy, montarWhere } from './filtros';
 import { exigirEdicaoEj, podeEditarEj } from './permissoes';
@@ -34,6 +36,7 @@ const SELECT_LISTA = {
   regiao: true,
   statusProspeccao: true,
   scoreIcp: true,
+  faixaIcp: true,
   verificado: true,
   federada: true,
   membrosEstimados: true,
@@ -53,6 +56,8 @@ export class EmpresasJunioresService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
+    private readonly status: StatusService,
+    private readonly score: ScoreService,
   ) {}
 
   async listar(q: ListarEjsQuery, usuario: UsuarioAutenticado) {
@@ -192,6 +197,8 @@ export class EmpresasJunioresService {
         throw new ForbiddenException('SDR só pode atribuir EJs a si mesmo');
       responsavelId = usuario.id; // SDR cria já na própria carteira (senão não poderia editar)
     }
+    if (input.statusProspeccao === 'PERDIDA' || input.statusProspeccao === 'NUTRICAO')
+      throw new BadRequestException('Crie a EJ e depois mude o status informando motivo/data de retorno');
     const uf = input.uf ?? null;
     const iesNome = await this.nomeIes(input.ies);
     const chave = chaveDedupe({ cnpj: input.cnpj ?? null, nome: input.nome, ies: iesNome, uf });
@@ -236,6 +243,8 @@ export class EmpresasJunioresService {
             tags: input.tagIds?.length ? { connect: input.tagIds.map((id) => ({ id })) } : undefined,
           },
         });
+        await this.status.registrarInicial(tx, criada.id, criada.statusProspeccao, usuario.id);
+        await this.score.recalcularEj(criada.id, tx);
         await this.audit.registrar(
           {
             usuarioId: usuario.id,
@@ -301,7 +310,6 @@ export class EmpresasJunioresService {
       'emailInstitucional',
       'telefoneInstitucional',
       'situacaoCadastral',
-      'statusProspeccao',
       'observacoes',
       'verificado',
     ] as const;
@@ -316,6 +324,12 @@ export class EmpresasJunioresService {
     if (input.federacaoId !== undefined) rel.federacaoId = input.federacaoId ?? null;
     if (input.nucleoId !== undefined) rel.nucleoId = input.nucleoId ?? null;
     if (input.responsavelId !== undefined) rel.responsavelId = input.responsavelId ?? null;
+
+    const mexeNoStatus =
+      input.statusProspeccao !== undefined ||
+      input.motivoPerdaId !== undefined ||
+      input.motivoPerdaDetalhe !== undefined ||
+      input.dataRetornoNutricao !== undefined;
 
     const resultado = await this.prisma.$transaction(async (tx) => {
       if (input.ies !== undefined) {
@@ -339,6 +353,30 @@ export class EmpresasJunioresService {
         ...Object.fromEntries(campos.map((c) => [c, (e as unknown as Snapshot)[c]])),
         tagIds: e.tags.map((t) => t.id).sort(),
       });
+      if (mexeNoStatus) {
+        const alvo = input.statusProspeccao ?? atual.statusProspeccao;
+        const mesmo = alvo === atual.statusProspeccao;
+        // Sem reenviar os campos, mantém os atuais (ex.: só trocar o detalhe da perda).
+        await this.status.aplicarEmLote(
+          tx,
+          [atual],
+          {
+            status: alvo,
+            motivoPerdaId: input.motivoPerdaId !== undefined ? input.motivoPerdaId : mesmo ? atual.motivoPerdaId : null,
+            motivoPerdaDetalhe:
+              input.motivoPerdaDetalhe !== undefined ? input.motivoPerdaDetalhe : mesmo ? atual.motivoPerdaDetalhe : null,
+            dataRetornoNutricao:
+              input.dataRetornoNutricao !== undefined
+                ? input.dataRetornoNutricao
+                : mesmo
+                  ? (atual.dataRetornoNutricao?.toISOString().slice(0, 10) ?? null)
+                  : null,
+          },
+          usuario,
+          'edicao',
+        );
+      }
+      await this.score.recalcularEj(id, tx);
       const diff = diffCampos(snap(atual), snap(nova));
       // Texto livre pode conter dado pessoal: no AuditLog fica só o indicativo de alteração.
       if (diff && 'observacoes' in diff.depois) {

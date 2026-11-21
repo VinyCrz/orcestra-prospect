@@ -205,3 +205,27 @@ as cores da Orce'estra. Modo claro/escuro (segue o sistema, com alternância no 
 - **Ações em massa** limitadas a 5.000 EJs; distribuição de carteira a 20.000. AuditLog por EJ alterada.
 - **Exportação CSV**: UTF-8 com BOM, separador `;` (Excel pt-BR), células iniciadas por `= + - @` recebem `'`.
 - **AuditLog de contatos**: nome, e-mail, telefone e WhatsApp são mascarados (ex.: `jo***@dominio.com`).
+
+### Etapa 3 — interações, tarefas e funil (back-end)
+
+- **Mudança de status centralizada** (`StatusService`): usada pelo `PATCH /empresas-juniores/:id` (campos `statusProspeccao`,
+  `motivoPerdaId`, `motivoPerdaDetalhe`, `dataRetornoNutricao`), pela ação em massa `MUDAR_STATUS` e pelo kanban
+  (`PATCH /empresas-juniores/:id/status`). PERDIDA exige motivo ativo e NUTRICAO exige data de retorno (400); ao sair
+  desses status os campos são limpos. Grava `HistoricoStatus`, `statusAlteradoEm` e `AuditLog` `EJ_STATUS_ALTERADO`
+  (sem o texto do detalhe). Criar EJ já como PERDIDA/NUTRICAO é recusado (crie e depois mude o status).
+- **Kanban**: `GET /funil/kanban` devolve por coluna `total` + primeiros `limite` cards (padrão 20, máx. 50), ordenados
+  por score; paginação por coluna com `?status=X&cursor=<proximoCursor>`. Filtros: `responsavelId` (aceita `eu`/`nenhum`), `uf`, `busca`.
+- **Motivos de perda**: leitura para todos; criar/editar só ADMIN; não há exclusão (desativa-se, pois há FK `Restrict`).
+- **Interações**: SDR registra interação só nas EJs da própria carteira (mesma regra de edição); GESTOR/ADMIN em qualquer
+  uma. Editar/excluir: autor, GESTOR ou ADMIN. Contato em opt-out ou anonimizado = 422. O `resumo` não vai para o AuditLog.
+  **O status NÃO muda automaticamente**: se a EJ está em NAO_TRABALHADA/PESQUISADA a resposta traz `sugestaoStatus`
+  (PRIMEIRO_CONTATO) e o front decide se oferece a mudança.
+- **Linha do tempo**: `GET /empresas-juniores/:id/timeline` une interações, histórico de status, AuditLog da EJ e dos contatos
+  (já mascarado), tarefas criadas e concluídas.
+- **Tarefas**: agenda e contador usam o dia civil de America/Sao_Paulo (UTC-3 fixo, sem horário de verão). Data sem hora
+  vale o início do dia em SP. `adiar` com `dias` soma a max(vencimento, hoje). SDR só vê/cria tarefas para si.
+- **Alertas diários** (fila BullMQ `alertas`, job repetível 06:00 America/Sao_Paulo; `POST /alertas/executar` só ADMIN):
+  mandato terminando em até 30 dias -> `MANDATO_VENCENDO` (vencimento = min(fim do mandato, hoje+7)); EJ em NUTRICAO com retorno
+  em até 3 dias ou atrasado -> `NUTRICAO_RETORNO` (vencimento = data de retorno). Tarefa vai para o responsável da EJ; sem
+  responsável (ou inativo) é pulada e contada em `semResponsavel`. Idempotência por `chaveIdempotencia` única
+  (`mandato:<contatoId>:<fim>` / `nutricao:<ejId>:<data>`) com `createMany skipDuplicates`.

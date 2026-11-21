@@ -3,6 +3,8 @@ import { LIMITE_ACOES_EM_MASSA, type AcaoEmMassaInput } from '@orcestra/shared';
 import { Prisma, StatusProspeccao } from '@prisma/client';
 import type { UsuarioAutenticado } from '../auth/auth.types';
 import { AuditService, type RegistroAudit } from '../common/audit.service';
+import { ScoreService } from '../score/score.service';
+import { StatusService, SELECT_STATUS } from '../funil/status.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { montarWhere } from './filtros';
 import { podeEditarEj } from './permissoes';
@@ -24,6 +26,8 @@ export class AcoesEmMassaService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
+    private readonly status: StatusService,
+    private readonly score: ScoreService,
   ) {}
 
   async executar(input: AcaoEmMassaInput, usuario: UsuarioAutenticado): Promise<ResultadoAcaoEmMassa> {
@@ -36,7 +40,7 @@ export class AcoesEmMassaService {
     const alvos = await this.prisma.empresaJunior.findMany({
       where,
       take: LIMITE_ACOES_EM_MASSA + 1,
-      select: { id: true, responsavelId: true, statusProspeccao: true },
+      select: SELECT_STATUS,
     });
     if (alvos.length > LIMITE_ACOES_EM_MASSA)
       throw new BadRequestException(
@@ -78,23 +82,20 @@ export class AcoesEmMassaService {
             break;
           }
           case 'MUDAR_STATUS': {
-            const novo = input.valor as StatusProspeccao;
-            const mudar = permitidas.filter((e) => e.statusProspeccao !== novo);
-            await tx.empresaJunior.updateMany({
-              where: { id: { in: mudar.map((e) => e.id) } },
-              data: { statusProspeccao: novo },
-            });
-            for (const e of mudar)
-              logs.push({
-                ...base,
-                acao: 'EJ_EDITADA_EM_MASSA',
-                entidadeId: e.id,
-                dados: {
-                  antes: { statusProspeccao: e.statusProspeccao },
-                  depois: { statusProspeccao: novo },
-                },
-              });
-            resultado.alteradas = mudar.length;
+            // Regras (motivo/data de retorno), histórico e auditoria vivem no StatusService.
+            const r = await this.status.aplicarEmLote(
+              tx,
+              permitidas,
+              {
+                status: input.valor as StatusProspeccao,
+                motivoPerdaId: input.motivoPerdaId,
+                motivoPerdaDetalhe: input.motivoPerdaDetalhe,
+                dataRetornoNutricao: input.dataRetornoNutricao,
+              },
+              usuario,
+              'massa',
+            );
+            resultado.alteradas = r.alteradas;
             break;
           }
           case 'ADICIONAR_TAG':
@@ -123,6 +124,7 @@ export class AcoesEmMassaService {
                 data: { atualizadoEm: new Date() },
               });
             }
+            await this.score.recalcularEjs(mudar, tx);
             for (const id of mudar)
               logs.push({
                 ...base,

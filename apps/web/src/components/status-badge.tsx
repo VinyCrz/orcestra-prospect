@@ -5,9 +5,9 @@ const VARIANTE: Partial<
   Record<StatusProspeccao, 'secondary' | 'brand' | 'success' | 'destructive'>
 > = {
   NAO_TRABALHADA: 'secondary',
-  GANHA: 'success',
+  OPORTUNIDADE: 'success',
   PERDIDA: 'destructive',
-  DESCARTADA: 'destructive',
+  NUTRICAO: 'secondary',
 };
 
 export function StatusBadge({ status }: { status: StatusProspeccao }) {
