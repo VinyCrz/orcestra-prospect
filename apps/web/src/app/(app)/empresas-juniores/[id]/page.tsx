@@ -11,9 +11,11 @@ import {
   Linkedin,
   Facebook,
   Mail,
+  Pencil,
   Phone,
 } from 'lucide-react';
 import { formatarCnpj, REGIAO_LABEL, type Regiao } from '@orcestra/shared';
+import { SecaoContatos } from '@/components/ej/contatos';
 import { StatusBadge } from '@/components/status-badge';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -38,7 +40,17 @@ function Linha({ rotulo, children }: { rotulo: string; children: React.ReactNode
   );
 }
 
+function ehUrlHttp(v: string) {
+  try {
+    return /^https?:$/.test(new URL(v).protocol);
+  } catch {
+    return false;
+  }
+}
+
 function LinkExterno({ href, children }: { href: string; children: React.ReactNode }) {
+  // Fonte de cadastro manual não é URL ("cadastro manual"): mostra só o texto.
+  if (!ehUrlHttp(href)) return <span>{children}</span>;
   return (
     <a
       href={href}
@@ -126,7 +138,14 @@ export default function DetalheEjPage({ params }: { params: Promise<{ id: string
               .join(' · ') || 'Localização não informada'}
           </p>
         </div>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          {ej.podeEditar && (
+            <Button asChild size="sm">
+              <Link href={`/empresas-juniores/${ej.id}/editar`}>
+                <Pencil /> Editar
+              </Link>
+            </Button>
+          )}
           <StatusBadge status={ej.statusProspeccao} />
           <Badge variant="outline">Score ICP: {ej.scoreIcp}</Badge>
           {ej.federacao && <Badge variant="brand">{ej.federacao.sigla}</Badge>}
@@ -157,9 +176,13 @@ export default function DetalheEjPage({ params }: { params: Promise<{ id: string
                 <Linha rotulo="Ano de fundação">{ej.anoFundacao}</Linha>
                 <Linha rotulo="Membros (estimativa)">{ej.membrosEstimados}</Linha>
                 <Linha rotulo="ID Brasil Júnior">{ej.idBrasilJunior}</Linha>
+                <Linha rotulo="Responsável">{ej.responsavel?.nome}</Linha>
+                <Linha rotulo="Observações">{ej.observacoes}</Linha>
               </dl>
             </CardContent>
           </Card>
+
+          <SecaoContatos ejId={ej.id} podeEditar={ej.podeEditar} />
 
           <Card>
             <CardHeader>
@@ -253,7 +276,7 @@ export default function DetalheEjPage({ params }: { params: Promise<{ id: string
             <CardContent className="grid gap-3 text-sm">
               <div>
                 <p className="mb-1 text-muted-foreground">Fonte principal</p>
-                <LinkExterno href={ej.fonteUrl}>{new URL(ej.fonteUrl).host}</LinkExterno>
+                <LinkExterno href={ej.fonteUrl}>{ehUrlHttp(ej.fonteUrl) ? new URL(ej.fonteUrl).host : ej.fonteUrl}</LinkExterno>
               </div>
               {ej.fontes.filter((f) => f !== ej.fonteUrl).length > 0 && (
                 <div>

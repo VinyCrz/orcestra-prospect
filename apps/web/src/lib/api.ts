@@ -50,10 +50,15 @@ async function tokenRenovado(): Promise<string | null> {
   return (await renovarSessao())?.accessToken ?? null;
 }
 
-type Opcoes = Omit<RequestInit, 'body'> & { json?: unknown; semRenovar?: boolean };
+type Opcoes = Omit<RequestInit, 'body'> & {
+  json?: unknown;
+  /** Corpo bruto (ex.: FormData em uploads); o Content-Type é definido pelo navegador. */
+  corpo?: BodyInit;
+  semRenovar?: boolean;
+};
 
 export async function api<T>(caminho: string, opcoes: Opcoes = {}): Promise<T> {
-  const { json, semRenovar, headers, ...resto } = opcoes;
+  const { json, corpo: corpoBruto, semRenovar, headers, ...resto } = opcoes;
   const fazer = (token: string | null) =>
     fetch(`/api${caminho}`, {
       ...resto,
@@ -63,7 +68,7 @@ export async function api<T>(caminho: string, opcoes: Opcoes = {}): Promise<T> {
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
         ...headers,
       },
-      body: json !== undefined ? JSON.stringify(json) : undefined,
+      body: json !== undefined ? JSON.stringify(json) : corpoBruto,
     });
 
   let r = await fazer(accessToken);
@@ -81,4 +86,34 @@ export async function api<T>(caminho: string, opcoes: Opcoes = {}): Promise<T> {
     throw new ApiError(r.status, msg, corpo);
   }
   return corpo as T;
+}
+
+/** Baixa um arquivo (ex.: CSV) autenticado e dispara o download no navegador. */
+export async function baixarArquivo(caminho: string, nomePadrao: string): Promise<void> {
+  const fazer = (token: string | null) =>
+    fetch(`/api${caminho}`, {
+      credentials: 'same-origin',
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    });
+  let r = await fazer(accessToken);
+  if (r.status === 401) {
+    const novo = await tokenRenovado();
+    if (novo) r = await fazer(novo);
+    if (r.status === 401) aoExpirar?.();
+  }
+  if (!r.ok) throw new ApiError(r.status, 'Não foi possível baixar o arquivo');
+  const cd = r.headers.get('Content-Disposition') ?? '';
+  const nome = /filename="?([^";]+)"?/.exec(cd)?.[1] ?? nomePadrao;
+  baixarBlob(await r.blob(), nome);
+}
+
+export function baixarBlob(blob: Blob, nome: string) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = nome;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
 }

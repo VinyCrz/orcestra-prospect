@@ -1,6 +1,5 @@
 import { z } from 'zod';
-import { PAPEIS, STATUS_PROSPECCAO } from './enums';
-import { UF_SIGLAS } from './uf';
+import { PAPEIS } from './enums';
 
 export const senhaSchema = z
   .string()
@@ -40,20 +39,3 @@ export const atualizarUsuarioSchema = z.object({
   ativo: z.boolean().optional(),
 });
 export type AtualizarUsuarioInput = z.infer<typeof atualizarUsuarioSchema>;
-
-export const listarEjsQuerySchema = z.object({
-  page: z.coerce.number().int().min(1).default(1),
-  pageSize: z.coerce.number().int().min(1).max(100).default(20),
-  busca: z.string().trim().max(120).optional(),
-  uf: z
-    .string()
-    .trim()
-    .toUpperCase()
-    .refine((v) => UF_SIGLAS.includes(v), 'UF inválida')
-    .optional(),
-  federacaoId: z.string().trim().optional(),
-  status: z.enum(STATUS_PROSPECCAO).optional(),
-  ordenarPor: z.enum(['nome', 'uf', 'cidade', 'scoreIcp', 'atualizadoEm']).default('nome'),
-  ordem: z.enum(['asc', 'desc']).default('asc'),
-});
-export type ListarEjsQuery = z.infer<typeof listarEjsQuerySchema>;

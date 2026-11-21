@@ -3,20 +3,29 @@ import { Suspense, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
-import { flexRender, getCoreRowModel, useReactTable, type ColumnDef } from '@tanstack/react-table';
 import {
+  ArrowDown,
+  ArrowUp,
+  ArrowUpDown,
   ChevronLeft,
   ChevronRight,
   ChevronsLeft,
   ChevronsRight,
   FilterX,
+  Plus,
   Search,
 } from 'lucide-react';
-import { UFS, type EmpresaJuniorResumo } from '@orcestra/shared';
+import { UFS } from '@orcestra/shared';
+import { BarraAcoesEmMassa } from '@/components/ej/acoes-em-massa';
+import { FiltrosSheet } from '@/components/ej/filtros-sheet';
+import { ListasSalvas } from '@/components/ej/listas-salvas';
+import { useFiltrosBase } from '@/components/ej/use-opcoes';
 import { PageHeader } from '@/components/page-header';
 import { StatusBadge } from '@/components/status-badge';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import {
   Select,
@@ -36,27 +45,44 @@ import {
 } from '@/components/ui/table';
 import { useDebounce } from '@/hooks/use-debounce';
 import { api } from '@/lib/api';
-import type { Federacao, ListaEjs } from '@/lib/tipos';
+import { useAuth } from '@/lib/auth';
+import {
+  contarFiltros,
+  filtrosDaUrl,
+  listaDe,
+  querystringFiltros,
+  type FiltrosUrl,
+} from '@/lib/filtros-ej';
+import type { EjLista, ListaEjs } from '@/lib/tipos';
 
 const TODAS = 'todas';
 const PAGE_SIZE = 20;
 const numero = new Intl.NumberFormat('pt-BR');
 
-/** Classes por coluna: em telas pequenas algumas colunas somem (os dados vão para a linha do nome). */
-const CLASSE_COLUNA: Record<string, string> = {
-  ies: 'hidden md:table-cell',
-  cidade: 'hidden sm:table-cell',
-  federacao: 'hidden lg:table-cell',
-  statusProspeccao: 'hidden sm:table-cell',
-};
+interface Coluna {
+  id: string;
+  titulo: string;
+  ordenar?: string;
+  classe?: string;
+}
 
-const colunas: ColumnDef<EmpresaJuniorResumo>[] = [
-  {
-    header: 'Empresa Júnior',
-    accessorKey: 'nome',
-    cell: ({ row }) => {
-      const ej = row.original;
-      // Em telas pequenas as colunas IES/Cidade/Federação ficam ocultas: mostramos um resumo sob o nome.
+/** Em telas pequenas algumas colunas somem (os dados vão para a linha do nome). */
+const COLUNAS: Coluna[] = [
+  { id: 'nome', titulo: 'Empresa Júnior', ordenar: 'nome' },
+  { id: 'ies', titulo: 'IES', classe: 'hidden md:table-cell' },
+  { id: 'cidade', titulo: 'Cidade', ordenar: 'cidade', classe: 'hidden sm:table-cell' },
+  { id: 'uf', titulo: 'UF', ordenar: 'uf' },
+  { id: 'federacao', titulo: 'Federação', classe: 'hidden lg:table-cell' },
+  { id: 'responsavel', titulo: 'Responsável', classe: 'hidden xl:table-cell' },
+  { id: 'score', titulo: 'Score', ordenar: 'scoreIcp', classe: 'hidden lg:table-cell' },
+  { id: 'status', titulo: 'Status', classe: 'hidden sm:table-cell' },
+];
+
+const Vazio = () => <span className="text-muted-foreground">—</span>;
+
+function Celula({ id, ej }: { id: string; ej: EjLista }) {
+  switch (id) {
+    case 'nome': {
       const extra = [ej.ies?.sigla ?? ej.ies?.nome, ej.cidade, ej.federacao?.sigla].filter(Boolean);
       return (
         <div className="min-w-0">
@@ -71,64 +97,67 @@ const colunas: ColumnDef<EmpresaJuniorResumo>[] = [
               {extra.join(' · ')}
             </p>
           )}
+          <div className="mt-1 flex flex-wrap gap-1 sm:hidden">
+            <StatusBadge status={ej.statusProspeccao} />
+          </div>
         </div>
       );
-    },
-  },
-  {
-    header: 'IES',
-    id: 'ies',
-    cell: ({ row }) => {
-      const ies = row.original.ies;
-      if (!ies) return <span className="text-muted-foreground">—</span>;
-      return (
-        <span className="line-clamp-1" title={ies.nome}>
-          {ies.sigla ?? ies.nome}
+    }
+    case 'ies':
+      return ej.ies ? (
+        <span className="line-clamp-1" title={ej.ies.nome}>
+          {ej.ies.sigla ?? ej.ies.nome}
         </span>
+      ) : (
+        <Vazio />
       );
-    },
-  },
-  {
-    header: 'Cidade',
-    accessorKey: 'cidade',
-    cell: ({ getValue }) =>
-      getValue<string | null>() ?? <span className="text-muted-foreground">—</span>,
-  },
-  {
-    header: 'UF',
-    accessorKey: 'uf',
-    cell: ({ getValue }) => <span data-testid="celula-uf">{getValue<string | null>() ?? '—'}</span>,
-  },
-  {
-    header: 'Federação',
-    id: 'federacao',
-    cell: ({ row }) =>
-      row.original.federacao?.sigla ?? <span className="text-muted-foreground">—</span>,
-  },
-  {
-    header: 'Status',
-    accessorKey: 'statusProspeccao',
-    cell: ({ row }) => <StatusBadge status={row.original.statusProspeccao} />,
-  },
-];
+    case 'cidade':
+      return ej.cidade ?? <Vazio />;
+    case 'uf':
+      return <span data-testid="celula-uf">{ej.uf ?? '—'}</span>;
+    case 'federacao':
+      return ej.federacao?.sigla ?? <Vazio />;
+    case 'responsavel':
+      return ej.responsavel?.nome ?? <span className="text-muted-foreground">Sem responsável</span>;
+    case 'score':
+      return <Badge variant="outline">{ej.scoreIcp}</Badge>;
+    default:
+      return <StatusBadge status={ej.statusProspeccao} />;
+  }
+}
 
 function ListaEmpresas() {
   const router = useRouter();
   const pathname = usePathname();
   const params = useSearchParams();
+  const { temPapel } = useAuth();
   const page = Math.max(1, Number(params.get('page') ?? 1) || 1);
-  const uf = params.get('uf') ?? '';
-  const federacaoId = params.get('federacao') ?? '';
+  const ordenarPor = params.get('ordenarPor') ?? 'nome';
+  const ordem = params.get('ordem') === 'desc' ? 'desc' : 'asc';
+  const filtros = useMemo(() => filtrosDaUrl(params), [params]);
+  const ufs = listaDe(filtros.uf);
   const [busca, setBusca] = useState(params.get('busca') ?? '');
   const buscaDebounced = useDebounce(busca.trim());
+  const [selecionadas, setSelecionadas] = useState<Map<string, EjLista>>(new Map());
+  const [todosDoFiltro, setTodosDoFiltro] = useState(false);
 
-  function atualizar(novos: Record<string, string | null>) {
+  function atualizar(novos: Record<string, string | null | undefined>, manterPagina = false) {
     const p = new URLSearchParams(params.toString());
     for (const [k, v] of Object.entries(novos)) {
       if (v) p.set(k, v);
       else p.delete(k);
     }
-    if (!('page' in novos)) p.delete('page');
+    if (!manterPagina && !('page' in novos)) p.delete('page');
+    const qs = p.toString();
+    router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+  }
+
+  /** Substitui todos os filtros (painel, lista salva), preservando a ordenação. */
+  function aplicarFiltros(f: FiltrosUrl) {
+    const p = new URLSearchParams();
+    for (const k of ['ordenarPor', 'ordem']) if (params.get(k)) p.set(k, params.get(k)!);
+    for (const [k, v] of Object.entries(f)) if (v) p.set(k, v);
+    setBusca(f.busca ?? '');
     const qs = p.toString();
     router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
   }
@@ -139,24 +168,24 @@ function ListaEmpresas() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [buscaDebounced]);
 
-  const filtrosQuery = useQuery({
-    queryKey: ['ejs-filtros'],
-    queryFn: () => api<{ ufs: { uf: string; total: number }[] }>('/empresas-juniores/filtros'),
-    staleTime: 5 * 60_000,
-  });
-  const federacoesQuery = useQuery({
-    queryKey: ['federacoes'],
-    queryFn: () => api<Federacao[]>('/federacoes'),
-    staleTime: 5 * 60_000,
-  });
+  const filtrosKey = querystringFiltros(filtros);
+  useEffect(() => {
+    setSelecionadas(new Map());
+    setTodosDoFiltro(false);
+  }, [filtrosKey]);
 
-  const qs = useMemo(() => {
-    const p = new URLSearchParams({ page: String(page), pageSize: String(PAGE_SIZE) });
-    if (params.get('busca')) p.set('busca', params.get('busca')!);
-    if (uf) p.set('uf', uf);
-    if (federacaoId) p.set('federacaoId', federacaoId);
-    return p.toString();
-  }, [page, uf, federacaoId, params]);
+  const filtrosQuery = useFiltrosBase();
+
+  const qs = useMemo(
+    () =>
+      querystringFiltros(filtros, {
+        page: String(page),
+        pageSize: String(PAGE_SIZE),
+        ordenarPor,
+        ordem,
+      }),
+    [filtros, page, ordenarPor, ordem],
+  );
 
   const lista = useQuery({
     queryKey: ['ejs', qs],
@@ -164,29 +193,59 @@ function ListaEmpresas() {
     placeholderData: keepPreviousData,
   });
 
-  const tabela = useReactTable({
-    data: lista.data?.items ?? [],
-    columns: colunas,
-    getCoreRowModel: getCoreRowModel(),
-    manualPagination: true,
-    pageCount: lista.data?.totalPages ?? -1,
-  });
-
+  const linhas = lista.data?.items ?? [];
   const contagemUf = new Map((filtrosQuery.data?.ufs ?? []).map((u) => [u.uf, u.total]));
-  const temFiltro = !!(uf || federacaoId || params.get('busca'));
+  const temFiltro = contarFiltros(filtros) > 0 || !!filtros.busca;
   const total = lista.data?.total ?? 0;
   const totalPages = lista.data?.totalPages ?? 1;
   const inicio = total === 0 ? 0 : (page - 1) * PAGE_SIZE + 1;
   const fim = Math.min(page * PAGE_SIZE, total);
+  const todasMarcadas = linhas.length > 0 && linhas.every((l) => selecionadas.has(l.id));
+  const algumaMarcada = linhas.some((l) => selecionadas.has(l.id));
+
+  function alternarTodas(marcar: boolean) {
+    setTodosDoFiltro(false);
+    setSelecionadas((atual) => {
+      const novo = new Map(atual);
+      for (const l of linhas) {
+        if (marcar) novo.set(l.id, l);
+        else novo.delete(l.id);
+      }
+      return novo;
+    });
+  }
+  function alternar(l: EjLista, marcar: boolean) {
+    setTodosDoFiltro(false);
+    setSelecionadas((atual) => {
+      const novo = new Map(atual);
+      if (marcar) novo.set(l.id, l);
+      else novo.delete(l.id);
+      return novo;
+    });
+  }
+  function ordenar(campo: string) {
+    if (ordenarPor === campo) atualizar({ ordem: ordem === 'asc' ? 'desc' : 'asc' });
+    else atualizar({ ordenarPor: campo, ordem: 'asc' });
+  }
+
+  const colSpan = COLUNAS.length + 1;
+  const nSelecionadas = todosDoFiltro ? total : selecionadas.size;
 
   return (
     <>
       <PageHeader
         titulo="Empresas Juniores"
-        descricao="Base pública de EJs do Movimento Empresa Júnior. Somente leitura nesta etapa."
+        descricao="Base de EJs do Movimento Empresa Júnior: filtre, organize a carteira e acompanhe a prospecção."
+        acoes={
+          <Button asChild>
+            <Link href="/empresas-juniores/nova">
+              <Plus /> Nova EJ
+            </Link>
+          </Button>
+        }
       />
       <Card className="gap-0 py-0">
-        <div className="flex flex-col gap-3 border-b p-4 md:flex-row md:items-center">
+        <div className="flex flex-col gap-3 border-b p-4 lg:flex-row lg:items-center">
           <div className="relative flex-1">
             <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
             <Input
@@ -197,22 +256,31 @@ function ListaEmpresas() {
               aria-label="Buscar por nome"
             />
           </div>
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:flex md:shrink-0">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 lg:flex lg:shrink-0">
             <Select
-              value={uf || TODAS}
-              onValueChange={(v) => atualizar({ uf: v === TODAS ? null : v })}
+              value={ufs.length === 1 ? ufs[0] : ufs.length > 1 ? 'varias' : TODAS}
+              onValueChange={(v) => atualizar({ uf: v === TODAS || v === 'varias' ? null : v })}
             >
               <SelectTrigger
-                className="md:w-44"
+                className="lg:w-44"
                 aria-label="Filtrar por UF"
                 data-testid="filtro-uf"
               >
                 <SelectValue placeholder="UF">
-                  {uf ? `${uf} — ${UFS.find((u) => u.sigla === uf)?.nome ?? ''}` : 'Todas as UFs'}
+                  {ufs.length > 1
+                    ? `${ufs.length} UFs`
+                    : ufs.length === 1
+                      ? `${ufs[0]} — ${UFS.find((u) => u.sigla === ufs[0])?.nome ?? ''}`
+                      : 'Todas as UFs'}
                 </SelectValue>
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value={TODAS}>Todas as UFs</SelectItem>
+                {ufs.length > 1 && (
+                  <SelectItem value="varias" disabled>
+                    {ufs.length} UFs selecionadas
+                  </SelectItem>
+                )}
                 {UFS.map((u) => (
                   <SelectItem key={u.sigla} value={u.sigla}>
                     {u.sigla} — {u.nome}
@@ -221,34 +289,8 @@ function ListaEmpresas() {
                 ))}
               </SelectContent>
             </Select>
-            <Select
-              value={federacaoId || TODAS}
-              onValueChange={(v) => atualizar({ federacao: v === TODAS ? null : v })}
-            >
-              <SelectTrigger
-                className="md:w-52"
-                aria-label="Filtrar por federação"
-                data-testid="filtro-federacao"
-              >
-                <SelectValue placeholder="Federação">
-                  {!federacaoId
-                    ? 'Todas as federações'
-                    : federacaoId === 'nenhuma'
-                      ? 'Sem federação confirmada'
-                      : (federacoesQuery.data?.find((f) => f.id === federacaoId)?.sigla ??
-                        'Federação')}
-                </SelectValue>
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value={TODAS}>Todas as federações</SelectItem>
-                {(federacoesQuery.data ?? []).map((f) => (
-                  <SelectItem key={f.id} value={f.id}>
-                    {f.sigla} ({f.totalEmpresas})
-                  </SelectItem>
-                ))}
-                <SelectItem value="nenhuma">Sem federação confirmada</SelectItem>
-              </SelectContent>
-            </Select>
+            <FiltrosSheet filtros={filtros} onAplicar={aplicarFiltros} />
+            <ListasSalvas filtros={filtros} onAplicar={aplicarFiltros} />
           </div>
           {temFiltro && (
             <Button
@@ -264,17 +306,70 @@ function ListaEmpresas() {
           )}
         </div>
 
+        {nSelecionadas > 0 && (
+          <BarraAcoesEmMassa
+            selecionadas={[...selecionadas.values()]}
+            totalFiltro={total}
+            filtros={filtros}
+            todosDoFiltro={todosDoFiltro}
+            onTodosDoFiltro={setTodosDoFiltro}
+            podeAtribuir={temPapel('ADMIN', 'GESTOR')}
+            onLimpar={() => {
+              setSelecionadas(new Map());
+              setTodosDoFiltro(false);
+            }}
+          />
+        )}
+
         <Table>
           <TableHeader>
-            {tabela.getHeaderGroups().map((hg) => (
-              <TableRow key={hg.id} className="hover:bg-transparent">
-                {hg.headers.map((h) => (
-                  <TableHead key={h.id} className={CLASSE_COLUNA[h.column.id]}>
-                    {flexRender(h.column.columnDef.header, h.getContext())}
-                  </TableHead>
-                ))}
-              </TableRow>
-            ))}
+            <TableRow className="hover:bg-transparent">
+              <TableHead className="w-10">
+                <Checkbox
+                  aria-label="Selecionar todas as EJs da página"
+                  checked={todasMarcadas}
+                  ref={(el) => {
+                    if (el) el.indeterminate = algumaMarcada && !todasMarcadas;
+                  }}
+                  onChange={(e) => alternarTodas(e.target.checked)}
+                  disabled={linhas.length === 0}
+                />
+              </TableHead>
+              {COLUNAS.map((c) => (
+                <TableHead
+                  key={c.id}
+                  className={c.classe}
+                  aria-sort={
+                    c.ordenar && ordenarPor === c.ordenar
+                      ? ordem === 'asc'
+                        ? 'ascending'
+                        : 'descending'
+                      : undefined
+                  }
+                >
+                  {c.ordenar ? (
+                    <button
+                      type="button"
+                      onClick={() => ordenar(c.ordenar!)}
+                      className="-mx-1 inline-flex items-center gap-1 rounded-sm px-1 outline-none hover:text-foreground focus-visible:ring-[3px] focus-visible:ring-ring/50"
+                    >
+                      {c.titulo}
+                      {ordenarPor === c.ordenar ? (
+                        ordem === 'asc' ? (
+                          <ArrowUp className="size-3.5" />
+                        ) : (
+                          <ArrowDown className="size-3.5" />
+                        )
+                      ) : (
+                        <ArrowUpDown className="size-3.5 opacity-50" />
+                      )}
+                    </button>
+                  ) : (
+                    c.titulo
+                  )}
+                </TableHead>
+              ))}
+            </TableRow>
           </TableHeader>
           <TableBody
             className={
@@ -284,13 +379,11 @@ function ListaEmpresas() {
             {lista.isLoading ? (
               Array.from({ length: 8 }).map((_, i) => (
                 <TableRow key={i}>
-                  {colunas.map((c, j) => (
-                    <TableCell
-                      key={j}
-                      className={
-                        CLASSE_COLUNA[c.id ?? (c as { accessorKey?: string }).accessorKey ?? '']
-                      }
-                    >
+                  <TableCell>
+                    <Skeleton className="size-4" />
+                  </TableCell>
+                  {COLUNAS.map((c) => (
+                    <TableCell key={c.id} className={c.classe}>
                       <Skeleton className="h-4 w-full max-w-40" />
                     </TableCell>
                   ))}
@@ -298,25 +391,36 @@ function ListaEmpresas() {
               ))
             ) : lista.isError ? (
               <TableRow>
-                <TableCell colSpan={colunas.length} className="py-10 text-center text-destructive">
-                  Não foi possível carregar as Empresas Juniores.
+                <TableCell colSpan={colSpan} className="py-10 text-center text-destructive">
+                  Não foi possível carregar as Empresas Juniores.{' '}
+                  <Button variant="link" className="h-auto p-0" onClick={() => void lista.refetch()}>
+                    Tentar novamente
+                  </Button>
                 </TableCell>
               </TableRow>
-            ) : tabela.getRowModel().rows.length === 0 ? (
+            ) : linhas.length === 0 ? (
               <TableRow>
-                <TableCell
-                  colSpan={colunas.length}
-                  className="py-10 text-center text-muted-foreground"
-                >
+                <TableCell colSpan={colSpan} className="py-10 text-center text-muted-foreground">
                   Nenhuma Empresa Júnior encontrada com esses filtros.
                 </TableCell>
               </TableRow>
             ) : (
-              tabela.getRowModel().rows.map((row) => (
-                <TableRow key={row.id} data-testid="linha-ej">
-                  {row.getVisibleCells().map((cell) => (
-                    <TableCell key={cell.id} className={CLASSE_COLUNA[cell.column.id]}>
-                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
+              linhas.map((ej) => (
+                <TableRow
+                  key={ej.id}
+                  data-testid="linha-ej"
+                  data-state={selecionadas.has(ej.id) ? 'selected' : undefined}
+                >
+                  <TableCell>
+                    <Checkbox
+                      aria-label={`Selecionar ${ej.nome}`}
+                      checked={selecionadas.has(ej.id)}
+                      onChange={(e) => alternar(ej, e.target.checked)}
+                    />
+                  </TableCell>
+                  {COLUNAS.map((c) => (
+                    <TableCell key={c.id} className={c.classe}>
+                      <Celula id={c.id} ej={ej} />
                     </TableCell>
                   ))}
                 </TableRow>
@@ -329,7 +433,7 @@ function ListaEmpresas() {
           <p className="text-muted-foreground" data-testid="resumo-paginacao">
             {lista.data
               ? `${numero.format(inicio)}–${numero.format(fim)} de ${numero.format(total)} EJs`
-              : ' '}
+              : ' '}
           </p>
           <div className="flex items-center gap-1">
             <Button
@@ -345,7 +449,7 @@ function ListaEmpresas() {
               variant="outline"
               size="icon"
               disabled={page <= 1}
-              onClick={() => atualizar({ page: page - 1 > 1 ? String(page - 1) : null })}
+              onClick={() => atualizar({ page: page - 1 > 1 ? String(page - 1) : null }, true)}
               aria-label="Página anterior"
             >
               <ChevronLeft />
@@ -357,7 +461,7 @@ function ListaEmpresas() {
               variant="outline"
               size="icon"
               disabled={page >= totalPages}
-              onClick={() => atualizar({ page: String(page + 1) })}
+              onClick={() => atualizar({ page: String(page + 1) }, true)}
               aria-label="Próxima página"
             >
               <ChevronRight />
@@ -366,7 +470,7 @@ function ListaEmpresas() {
               variant="outline"
               size="icon"
               disabled={page >= totalPages}
-              onClick={() => atualizar({ page: String(totalPages) })}
+              onClick={() => atualizar({ page: String(totalPages) }, true)}
               aria-label="Última página"
             >
               <ChevronsRight />

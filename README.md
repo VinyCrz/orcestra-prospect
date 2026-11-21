@@ -148,6 +148,14 @@ as cores da Orce'estra. Modo claro/escuro (segue o sistema, com alternância no 
 
 ## Decisões
 
+- **Retenção da importação (LGPD):** a planilha enviada (`importacoes_arquivos`) é apagada assim que a importação
+  termina (CONCLUIDA ou FALHOU). O relatório de erros guarda só nº da linha, campo e mensagem (valores entre
+  aspas de contatos são omitidos), sem os valores originais; o `erros.csv` traz apenas essas três colunas.
+  Contatos importados geram `AuditLog` (`CONTATO_CRIADO`/`CONTATO_EDITADO`) com dados pessoais mascarados; a base
+  legal pode vir de uma coluna da planilha (padrão `LEGITIMO_INTERESSE_B2B`). Observações da EJ no `AuditLog`
+  gravam apenas "alterado".
+- **Leitura de contatos pelo SDR:** SDR continua podendo LER contatos de qualquer EJ (regra "SDR vê tudo"),
+  mas só edita os da sua carteira. A exportação CSV da lista de EJs não inclui contatos.
 - **Versões fixadas em majors estáveis** (TypeScript 5.9, Next 15.5, NestJS 11, Prisma 6, Zod 3, ESLint 9,
   TanStack Table 8) em vez dos majors mais recentes, para reduzir risco de incompatibilidade entre
   ferramentas (decorators do Nest, geração do Prisma, resolvers do RHF).
@@ -181,3 +189,19 @@ as cores da Orce'estra. Modo claro/escuro (segue o sistema, com alternância no 
 - **Fonte do sistema** (stack Inter/system-ui) em vez de `next/font/google`, para o build não depender de rede.
 - **BullMQ**: conexão e filas (`enriquecimento`, `cadencias`, `importacoes`) registradas; o healthcheck
   verifica o Redis. Nenhum worker nesta etapa.
+
+### Etapa 2 — gestão da base e importação
+
+- **Quem importa CSV/XLSX**: somente ADMIN e GESTOR. A importação altera a base compartilhada em lote (e pode
+  mesclar dados de EJs que outros SDRs trabalham); SDR continua editando individualmente as EJs da sua carteira.
+- **SDR e cadastro manual**: SDR pode cadastrar EJ, que já nasce na carteira dele (senão ele não poderia editá-la).
+  Só GESTOR/ADMIN atribuem responsável (individual, em massa ou por rodízio).
+- **Mesclar vs. ignorar**: MESCLAR preenche apenas campos vazios e une tags/serviços; nunca sobrescreve valor existente,
+  nem status, responsável, score, verificado ou `federada`. Duplicidade = CNPJ ou nome normalizado + IES + UF
+  (nome+UF também casa EJ com CNPJ quando a IES é compatível); contatos: e-mail (ou nome) dentro da mesma EJ.
+- **Processamento da importação**: fila BullMQ `importacoes` (worker no próprio processo da API), lotes de 200 linhas,
+  cada lote numa transação junto com o checkpoint (`processadas`); se um lote falhar, é reprocessado linha a linha.
+  Reprocessar nunca duplica (as linhas já criadas viram "duplicadas"). Federação inexistente na linha vira erro da linha.
+- **Ações em massa** limitadas a 5.000 EJs; distribuição de carteira a 20.000. AuditLog por EJ alterada.
+- **Exportação CSV**: UTF-8 com BOM, separador `;` (Excel pt-BR), células iniciadas por `= + - @` recebem `'`.
+- **AuditLog de contatos**: nome, e-mail, telefone e WhatsApp são mascarados (ex.: `jo***@dominio.com`).

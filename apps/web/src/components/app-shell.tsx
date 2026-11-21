@@ -2,7 +2,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { Building2, Loader2, LogOut, Menu, Users, X } from 'lucide-react';
+import { Briefcase, Building2, Loader2, LogOut, Menu, Upload, Users, X } from 'lucide-react';
 import { PAPEL_LABEL, type Papel } from '@orcestra/shared';
 import { Logo } from '@/components/logo';
 import { ThemeToggle } from '@/components/theme-toggle';
@@ -27,6 +27,8 @@ interface ItemNav {
 
 const NAV: ItemNav[] = [
   { href: '/empresas-juniores', label: 'Empresas Juniores', icon: Building2 },
+  { href: '/carteira', label: 'Carteira', icon: Briefcase, papeis: ['ADMIN', 'GESTOR'] },
+  { href: '/importacoes', label: 'Importações', icon: Upload, papeis: ['ADMIN', 'GESTOR'] },
   { href: '/usuarios', label: 'Usuários', icon: Users, papeis: ['ADMIN'] },
 ];
 

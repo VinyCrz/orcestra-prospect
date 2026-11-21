@@ -33,3 +33,27 @@ test('login → lista de Empresas Juniores → filtro por UF', async ({ page }) 
   await page.getByTestId('linha-ej').first().getByRole('link').click();
   await expect(page.getByText('Fonte dos dados')).toBeVisible();
 });
+
+test('painel de filtros aplica filtros na URL e itens de menu respeitam o papel', async ({ page }) => {
+  await page.goto('/login');
+  await page.getByLabel('E-mail').fill(EMAIL);
+  await page.getByLabel('Senha', { exact: true }).fill(SENHA);
+  await page.getByRole('button', { name: 'Entrar' }).click();
+  await expect(page.getByTestId('linha-ej').first()).toBeVisible();
+
+  // ADMIN enxerga Carteira e Importações
+  const nav = page.getByRole('navigation', { name: 'Navegação principal' });
+  await expect(nav.getByRole('link', { name: 'Carteira' })).toBeVisible();
+  await expect(nav.getByRole('link', { name: 'Importações' })).toBeVisible();
+
+  await page.getByTestId('abrir-filtros').click();
+  await page.getByRole('checkbox', { name: new RegExp(`^${UF} — `) }).check();
+  await page.getByRole('button', { name: 'Aplicar filtros' }).click();
+  await expect(page).toHaveURL(new RegExp(`uf=${UF}`));
+  const ufs = await page.getByTestId('celula-uf').allInnerTexts();
+  expect(new Set(ufs)).toEqual(new Set([UF]));
+
+  // Seleção de linha mostra a barra de ações em massa
+  await page.getByTestId('linha-ej').first().getByRole('checkbox').check();
+  await expect(page.getByTestId('barra-massa')).toBeVisible();
+});
