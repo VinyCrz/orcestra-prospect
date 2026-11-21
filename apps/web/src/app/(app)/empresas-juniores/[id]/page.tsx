@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { formatarCnpj, REGIAO_LABEL, type Regiao } from '@orcestra/shared';
 import { AcoesFunilEj } from '@/components/ej/acoes-funil';
+import { SecaoCadenciasEj } from '@/components/cadencias/secao-cadencias-ej';
 import { Timeline } from '@/components/ej/timeline';
 import { SecaoContatos } from '@/components/ej/contatos';
 import { FaixaBadge } from '@/components/faixa-badge';
@@ -190,6 +191,8 @@ export default function DetalheEjPage({ params }: { params: Promise<{ id: string
           <CardScore ej={ej} />
 
           <SecaoContatos ejId={ej.id} podeEditar={ej.podeEditar} />
+
+          <SecaoCadenciasEj ejId={ej.id} podeEditar={ej.podeEditar} />
 
           <Timeline ejId={ej.id} />
 

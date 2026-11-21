@@ -2,9 +2,10 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { BellRing, CalendarClock, Check, Loader2, Plus } from 'lucide-react';
+import { BellRing, CalendarClock, Check, Loader2, MessageSquareText, Plus } from 'lucide-react';
 import { toast } from 'sonner';
 import { ORIGEM_TAREFA_LABEL } from '@orcestra/shared';
+import { MensagemDialog } from '@/components/cadencias/mensagem-dialog';
 import { useOpcoesResponsaveis } from '@/components/ej/use-opcoes';
 import { PrioridadesSemana } from '@/components/score/prioridades-semana';
 import { PageHeader } from '@/components/page-header';
@@ -43,11 +44,13 @@ function LinhaTarefa({
   atrasada,
   somenteLeitura,
   onAdiarData,
+  onMensagem,
 }: {
   t: Tarefa;
   atrasada?: boolean;
   somenteLeitura?: boolean;
   onAdiarData: (id: string) => void;
+  onMensagem: (id: string) => void;
 }) {
   const qc = useQueryClient();
   const erro = (e: unknown) => toast.error(e instanceof ApiError ? e.message : 'Erro na tarefa');
@@ -93,7 +96,12 @@ function LinhaTarefa({
         </p>
       </div>
       {!somenteLeitura && (
-        <div className="flex shrink-0 gap-2">
+        <div className="flex shrink-0 flex-wrap gap-2">
+          {t.origem === 'CADENCIA' && (
+            <Button size="sm" onClick={() => onMensagem(t.id)} disabled={ocupado}>
+              <MessageSquareText /> Gerar mensagem
+            </Button>
+          )}
           <Button size="sm" variant="outline" onClick={() => concluir.mutate()} disabled={ocupado}>
             {concluir.isPending ? <Loader2 className="animate-spin" /> : <Check />}
             Concluir
@@ -124,6 +132,7 @@ function Secao({
   atrasada,
   somenteLeitura,
   onAdiarData,
+  onMensagem,
   testid,
 }: {
   titulo: string;
@@ -132,6 +141,7 @@ function Secao({
   atrasada?: boolean;
   somenteLeitura?: boolean;
   onAdiarData: (id: string) => void;
+  onMensagem: (id: string) => void;
   testid: string;
 }) {
   return (
@@ -156,6 +166,7 @@ function Secao({
                 atrasada={atrasada}
                 somenteLeitura={somenteLeitura}
                 onAdiarData={onAdiarData}
+                onMensagem={onMensagem}
               />
             ))}
           </ul>
@@ -173,6 +184,7 @@ export default function AgendaPage() {
   const [alvo, setAlvo] = useState<string>('');
   const [nova, setNova] = useState(false);
   const [adiarId, setAdiarId] = useState<string | null>(null);
+  const [mensagemId, setMensagemId] = useState<string | null>(null);
   const resp = useOpcoesResponsaveis(gestor);
   const responsavelId = gestor && alvo && alvo !== usuario?.id ? alvo : undefined;
 
@@ -276,6 +288,7 @@ export default function AgendaPage() {
             atrasada
             somenteLeitura={outroUsuario && !gestor}
             onAdiarData={setAdiarId}
+            onMensagem={setMensagemId}
           />
           <Secao
             testid="secao-hoje"
@@ -283,6 +296,7 @@ export default function AgendaPage() {
             tarefas={q.data.hoje}
             vazio="Nada para hoje."
             onAdiarData={setAdiarId}
+            onMensagem={setMensagemId}
           />
           <Secao
             testid="secao-proximos"
@@ -290,6 +304,7 @@ export default function AgendaPage() {
             tarefas={q.data.proximos7Dias}
             vazio="Nada nos próximos dias."
             onAdiarData={setAdiarId}
+            onMensagem={setMensagemId}
           />
         </div>
       )}
@@ -301,6 +316,7 @@ export default function AgendaPage() {
         podeEscolherResponsavel={gestor}
       />
       <AdiarDataDialog tarefaId={adiarId} onFechar={() => setAdiarId(null)} />
+      <MensagemDialog tarefaId={mensagemId} onFechar={() => setMensagemId(null)} />
     </div>
   );
 }

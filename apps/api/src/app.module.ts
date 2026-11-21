@@ -8,6 +8,7 @@ import { ScoreModule } from './score/score.module';
 import { FunilModule } from './funil/funil.module';
 import { InteracoesModule } from './interacoes/interacoes.module';
 import { MotivosPerdaModule } from './motivos-perda/motivos-perda.module';
+import { CadenciasModule } from './cadencias/cadencias.module';
 import { TarefasModule } from './tarefas/tarefas.module';
 import { ContatosModule } from './contatos/contatos.module';
 import { ImportacoesModule } from './importacoes/importacoes.module';
@@ -43,6 +44,7 @@ import { UsuariosModule } from './usuarios/usuarios.module';
     MotivosPerdaModule,
     InteracoesModule,
     TarefasModule,
+    CadenciasModule,
     AlertasModule,
     ScoreModule,
   ],

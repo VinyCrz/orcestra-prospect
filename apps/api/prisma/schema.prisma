@@ -72,6 +72,25 @@ enum OrigemTarefa {
   CADENCIA
 }
 
+/// Inscrição de uma EJ numa cadência (Etapa 5). No máximo UMA ATIVA por EJ+cadência (índice único parcial).
+enum StatusInscricao {
+  ATIVA
+  /// todos os passos executados
+  CONCLUIDA
+  /// interrompida antes do fim (ver motivoEncerramento)
+  ENCERRADA
+}
+
+enum MotivoEncerramento {
+  /// a EJ/contato respondeu (interação com resultado ≠ SEM_RESPOSTA)
+  RESPOSTA
+  /// a EJ avançou no funil (ou foi perdida/nutrição)
+  AVANCO_FUNIL
+  MANUAL
+  /// o contato da inscrição entrou em opt-out
+  OPT_OUT
+}
+
 enum StatusImportacao {
   /// arquivo recebido; aguardando mapeamento de colunas / pré-visualização / confirmação
   AGUARDANDO_MAPEAMENTO
@@ -149,20 +168,22 @@ model Usuario {
   criadoEm      DateTime  @default(now())
   atualizadoEm  DateTime  @updatedAt
 
-  refreshTokens       RefreshToken[]
-  tokensRedefinicao   TokenRedefinicaoSenha[]
-  empresasResponsavel EmpresaJunior[]         @relation("ResponsavelEj")
-  interacoes          Interacao[]
-  tarefasResponsavel  Tarefa[]                @relation("TarefaResponsavel")
-  tarefasCriadas      Tarefa[]                @relation("TarefaCriador")
-  historicoStatus     HistoricoStatus[]
-  cadencias           Cadencia[]
-  templates           TemplateMensagem[]
-  listas              ListaSalva[]
-  importacoes         Importacao[]
-  auditLogs           AuditLog[]
-  configScore         ConfigScore[]
-  criteriosScore      CriterioScore[]
+  refreshTokens         RefreshToken[]
+  tokensRedefinicao     TokenRedefinicaoSenha[]
+  empresasResponsavel   EmpresaJunior[]         @relation("ResponsavelEj")
+  interacoes            Interacao[]
+  tarefasResponsavel    Tarefa[]                @relation("TarefaResponsavel")
+  tarefasCriadas        Tarefa[]                @relation("TarefaCriador")
+  historicoStatus       HistoricoStatus[]
+  cadencias             Cadencia[]
+  templates             TemplateMensagem[]
+  listas                ListaSalva[]
+  importacoes           Importacao[]
+  auditLogs             AuditLog[]
+  configScore           ConfigScore[]
+  criteriosScore        CriterioScore[]
+  inscricoesResponsavel InscricaoCadencia[]     @relation("InscricaoResponsavel")
+  inscricoesFeitas      InscricaoCadencia[]     @relation("InscricaoInscritoPor")
 
   @@map("usuarios")
 }
@@ -229,10 +250,10 @@ model Nucleo {
 }
 
 model Ies {
-  id           String   @id @default(cuid())
+  id           String       @id @default(cuid())
   nome         String
   /// nome normalizado + UF — usado para deduplicar
-  chave        String   @unique
+  chave        String       @unique
   sigla        String?
   cidade       String?
   uf           String?      @db.Char(2)
@@ -299,16 +320,17 @@ model EmpresaJunior {
   criadoEm              DateTime         @default(now())
   atualizadoEm          DateTime         @updatedAt
 
-  ies             Ies?              @relation(fields: [iesId], references: [id])
-  federacao       Federacao?        @relation(fields: [federacaoId], references: [id])
-  nucleo          Nucleo?           @relation(fields: [nucleoId], references: [id])
-  responsavel     Usuario?          @relation("ResponsavelEj", fields: [responsavelId], references: [id])
-  motivoPerda     MotivoPerda?      @relation(fields: [motivoPerdaId], references: [id], onDelete: Restrict)
-  tags            Tag[]
-  contatos        Contato[]
-  interacoes      Interacao[]
-  tarefas         Tarefa[]
-  historicoStatus HistoricoStatus[]
+  ies                Ies?                @relation(fields: [iesId], references: [id])
+  federacao          Federacao?          @relation(fields: [federacaoId], references: [id])
+  nucleo             Nucleo?             @relation(fields: [nucleoId], references: [id])
+  responsavel        Usuario?            @relation("ResponsavelEj", fields: [responsavelId], references: [id])
+  motivoPerda        MotivoPerda?        @relation(fields: [motivoPerdaId], references: [id], onDelete: Restrict)
+  tags               Tag[]
+  contatos           Contato[]
+  interacoes         Interacao[]
+  tarefas            Tarefa[]
+  historicoStatus    HistoricoStatus[]
+  inscricoesCadencia InscricaoCadencia[]
 
   @@index([uf])
   @@index([motivoPerdaId])
@@ -376,9 +398,10 @@ model Contato {
   criadoEm        DateTime     @default(now())
   atualizadoEm    DateTime     @updatedAt
 
-  empresaJunior EmpresaJunior @relation(fields: [empresaJuniorId], references: [id], onDelete: Cascade)
-  interacoes    Interacao[]
-  tarefas       Tarefa[]
+  empresaJunior      EmpresaJunior       @relation(fields: [empresaJuniorId], references: [id], onDelete: Cascade)
+  interacoes         Interacao[]
+  tarefas            Tarefa[]
+  inscricoesCadencia InscricaoCadencia[]
 
   @@index([empresaJuniorId])
   /// alertas de mandato vencendo (Etapa 3)
@@ -430,83 +453,144 @@ model HistoricoStatus {
 }
 
 model Interacao {
-  id               String             @id @default(cuid())
-  empresaJuniorId  String
-  contatoId        String?
-  usuarioId        String?
-  canal            Canal
-  data             DateTime           @default(now())
-  resumo           String?
-  resultado        ResultadoInteracao @default(SEM_RESPOSTA)
-  proximoPasso     String?
-  proximoPassoData DateTime?
+  id                  String             @id @default(cuid())
+  empresaJuniorId     String
+  contatoId           String?
+  usuarioId           String?
+  canal               Canal
+  data                DateTime           @default(now())
+  resumo              String?
+  resultado           ResultadoInteracao @default(SEM_RESPOSTA)
+  proximoPasso        String?
+  proximoPassoData    DateTime?
   /// tarefa criada a partir do próximo passo (1:1)
-  tarefaId         String?            @unique
-  passoCadenciaId  String?
-  criadoEm         DateTime           @default(now())
-  atualizadoEm     DateTime           @updatedAt
+  tarefaId            String?            @unique
+  passoCadenciaId     String?
+  /// inscrição de cadência cujo passo gerou esta interação (métricas por cadência)
+  inscricaoCadenciaId String?
+  criadoEm            DateTime           @default(now())
+  atualizadoEm        DateTime           @updatedAt
 
-  empresaJunior EmpresaJunior  @relation(fields: [empresaJuniorId], references: [id], onDelete: Cascade)
-  contato       Contato?       @relation(fields: [contatoId], references: [id], onDelete: SetNull)
-  usuario       Usuario?       @relation(fields: [usuarioId], references: [id], onDelete: SetNull)
-  tarefa        Tarefa?        @relation("TarefaDaInteracao", fields: [tarefaId], references: [id], onDelete: SetNull)
-  passoCadencia PassoCadencia? @relation(fields: [passoCadenciaId], references: [id], onDelete: SetNull)
+  empresaJunior     EmpresaJunior      @relation(fields: [empresaJuniorId], references: [id], onDelete: Cascade)
+  contato           Contato?           @relation(fields: [contatoId], references: [id], onDelete: SetNull)
+  usuario           Usuario?           @relation(fields: [usuarioId], references: [id], onDelete: SetNull)
+  tarefa            Tarefa?            @relation("TarefaDaInteracao", fields: [tarefaId], references: [id], onDelete: SetNull)
+  passoCadencia     PassoCadencia?     @relation(fields: [passoCadenciaId], references: [id], onDelete: SetNull)
+  inscricaoCadencia InscricaoCadencia? @relation(fields: [inscricaoCadenciaId], references: [id], onDelete: SetNull)
 
   @@index([empresaJuniorId, data])
   @@index([usuarioId, data])
   @@index([canal, data])
+  @@index([inscricaoCadenciaId])
   @@map("interacoes")
 }
 
 model Tarefa {
-  id                String       @id @default(cuid())
-  titulo            String
-  descricao         String?
-  vencimento        DateTime
-  concluida         Boolean      @default(false)
-  concluidaEm       DateTime?
-  adiadaVezes       Int          @default(0)
-  origem            OrigemTarefa @default(MANUAL)
+  id                  String       @id @default(cuid())
+  titulo              String
+  descricao           String?
+  vencimento          DateTime
+  concluida           Boolean      @default(false)
+  concluidaEm         DateTime?
+  /// cancelada (ex.: cadência encerrada): grava-se concluida = true + canceladaEm, então some da agenda
+  /// sem mudar as consultas existentes; métricas de "concluídas" devem filtrar canceladaEm IS NULL
+  canceladaEm         DateTime?
+  adiadaVezes         Int          @default(0)
+  origem              OrigemTarefa @default(MANUAL)
   /// idempotência dos jobs (ex.: "mandato:<contatoId>:<mandatoFim>", "nutricao:<ejId>:<data>")
-  chaveIdempotencia String?      @unique
-  responsavelId     String
-  empresaJuniorId   String?
-  contatoId         String?
-  criadoPorId       String?
-  passoCadenciaId   String?
-  criadoEm          DateTime     @default(now())
-  atualizadoEm      DateTime     @updatedAt
+  chaveIdempotencia   String?      @unique
+  responsavelId       String
+  empresaJuniorId     String?
+  contatoId           String?
+  criadoPorId         String?
+  passoCadenciaId     String?
+  /// inscrição que gerou a tarefa (origem = CADENCIA)
+  inscricaoCadenciaId String?
+  criadoEm            DateTime     @default(now())
+  atualizadoEm        DateTime     @updatedAt
 
   /// usuários são desativados, não apagados — Restrict evita perder a agenda
-  responsavel   Usuario        @relation("TarefaResponsavel", fields: [responsavelId], references: [id], onDelete: Restrict)
-  empresaJunior EmpresaJunior? @relation(fields: [empresaJuniorId], references: [id], onDelete: Cascade)
-  contato       Contato?       @relation(fields: [contatoId], references: [id], onDelete: SetNull)
-  criadoPor     Usuario?       @relation("TarefaCriador", fields: [criadoPorId], references: [id], onDelete: SetNull)
-  passoCadencia PassoCadencia? @relation(fields: [passoCadenciaId], references: [id], onDelete: SetNull)
-  interacao     Interacao?     @relation("TarefaDaInteracao")
+  responsavel       Usuario            @relation("TarefaResponsavel", fields: [responsavelId], references: [id], onDelete: Restrict)
+  empresaJunior     EmpresaJunior?     @relation(fields: [empresaJuniorId], references: [id], onDelete: Cascade)
+  contato           Contato?           @relation(fields: [contatoId], references: [id], onDelete: SetNull)
+  criadoPor         Usuario?           @relation("TarefaCriador", fields: [criadoPorId], references: [id], onDelete: SetNull)
+  passoCadencia     PassoCadencia?     @relation(fields: [passoCadenciaId], references: [id], onDelete: SetNull)
+  /// SetNull: a inscrição não é apagada no fluxo normal (encerra-se); se for, a agenda/histórico fica
+  inscricaoCadencia InscricaoCadencia? @relation(fields: [inscricaoCadenciaId], references: [id], onDelete: SetNull)
+  interacao         Interacao?         @relation("TarefaDaInteracao")
 
+  /// no máximo uma tarefa por passo em cada inscrição (idempotência da geração; NULLs não colidem)
+  @@unique([inscricaoCadenciaId, passoCadenciaId])
   /// "Minha agenda" (hoje/atrasadas/7 dias) e contador de atrasadas
   @@index([responsavelId, concluida, vencimento])
+  /// tarefas pendentes de uma inscrição (encerrar cadência) e "próximo passo" da inscrição
+  @@index([inscricaoCadenciaId, concluida, vencimento])
   /// timeline da EJ
   @@index([empresaJuniorId, criadoEm])
   @@map("tarefas")
 }
 
+/// Cadência global (só ADMIN edita). Desative (ativa = false) em vez de apagar: inscrições têm FK Restrict.
 model Cadencia {
   id           String   @id @default(cuid())
   nome         String
+  /// chave estável das cadências do seed (idempotência sem sobrescrever edições); null = criada na UI
+  chave        String?  @unique
   descricao    String?
   ativa        Boolean  @default(true)
   criadoPorId  String?
   criadoEm     DateTime @default(now())
   atualizadoEm DateTime @updatedAt
 
-  criadoPor Usuario?        @relation(fields: [criadoPorId], references: [id], onDelete: SetNull)
-  passos    PassoCadencia[]
+  criadoPor  Usuario?            @relation(fields: [criadoPorId], references: [id], onDelete: SetNull)
+  passos     PassoCadencia[]
+  inscricoes InscricaoCadencia[]
 
   @@map("cadencias")
 }
 
+/// EJ inscrita numa cadência. Inscrever gera uma Tarefa (origem CADENCIA) por passo; responder/avançar
+/// no funil/opt-out encerra (status ENCERRADA + motivo) e cancela as tarefas pendentes.
+/// CHECK no banco: ATIVA ⇔ encerradaEm IS NULL; ENCERRADA exige motivoEncerramento; demais status sem motivo.
+/// Único parcial no banco: (empresaJuniorId, cadenciaId) WHERE status = 'ATIVA'.
+model InscricaoCadencia {
+  id                 String              @id @default(cuid())
+  empresaJuniorId    String
+  cadenciaId         String
+  /// destinatário das mensagens (opcional; se em opt-out, a API bloqueia/encerra)
+  contatoId          String?
+  responsavelId      String
+  inscritoPorId      String?
+  /// base do vencimento das tarefas: iniciadaEm + passo.diaOffset
+  iniciadaEm         DateTime            @default(now())
+  status             StatusInscricao     @default(ATIVA)
+  motivoEncerramento MotivoEncerramento?
+  motivoDetalhe      String?
+  encerradaEm        DateTime?
+  criadoEm           DateTime            @default(now())
+  atualizadoEm       DateTime            @updatedAt
+
+  empresaJunior EmpresaJunior @relation(fields: [empresaJuniorId], references: [id], onDelete: Cascade)
+  cadencia      Cadencia      @relation(fields: [cadenciaId], references: [id], onDelete: Restrict)
+  contato       Contato?      @relation(fields: [contatoId], references: [id], onDelete: SetNull)
+  /// usuários são desativados, não apagados
+  responsavel   Usuario       @relation("InscricaoResponsavel", fields: [responsavelId], references: [id], onDelete: Restrict)
+  inscritoPor   Usuario?      @relation("InscricaoInscritoPor", fields: [inscritoPorId], references: [id], onDelete: SetNull)
+  tarefas       Tarefa[]
+  interacoes    Interacao[]
+
+  /// inscrições (ativas) da EJ — página da EJ e encerramento ao responder/avançar no funil
+  @@index([empresaJuniorId, status])
+  /// inscritos de uma cadência por status (tela da cadência)
+  @@index([cadenciaId, status, iniciadaEm])
+  /// "minhas cadências ativas"
+  @@index([responsavelId, status])
+  /// encerrar inscrições ao dar opt-out no contato
+  @@index([contatoId])
+  @@map("inscricoes_cadencia")
+}
+
+/// CHECK no banco: ordem ≥ 1, diaOffset ≥ 0. template.canal = passo.canal é validado na API.
 model PassoCadencia {
   id           String   @id @default(cuid())
   cadenciaId   String
@@ -528,9 +612,13 @@ model PassoCadencia {
   @@map("passos_cadencia")
 }
 
+/// Variáveis suportadas: {{nome_ej}} {{nome_contato}} {{cargo}} {{ies}} {{cidade}} {{nome_sdr}}.
+/// `assunto` só faz sentido em EMAIL. Desative (ativo = false) em vez de apagar.
 model TemplateMensagem {
   id           String   @id @default(cuid())
   nome         String
+  /// chave estável dos templates do seed (idempotência sem sobrescrever edições); null = criado na UI
+  chave        String?  @unique
   canal        Canal
   assunto      String?
   corpo        String
@@ -543,6 +631,8 @@ model TemplateMensagem {
   criadoPor Usuario?        @relation(fields: [criadoPorId], references: [id], onDelete: SetNull)
   passos    PassoCadencia[]
 
+  /// seletor de template por canal no editor de passos
+  @@index([canal, ativo])
   @@map("templates_mensagem")
 }
 

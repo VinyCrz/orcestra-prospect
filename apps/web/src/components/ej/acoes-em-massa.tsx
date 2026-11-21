@@ -1,7 +1,7 @@
 'use client';
 import { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { Download, Loader2, X, Zap } from 'lucide-react';
+import { Download, Loader2, Repeat, X, Zap } from 'lucide-react';
 import { toast } from 'sonner';
 import { STATUS_PROSPECCAO_LABEL, type AcaoEmMassaInput, type StatusProspeccao } from '@orcestra/shared';
 import {
@@ -11,6 +11,7 @@ import {
   faltaParaStatus,
   type ExtrasStatus,
 } from '@/components/funil/status-dialog';
+import { InscreverDialog } from '@/components/cadencias/inscrever-dialog';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -88,6 +89,7 @@ export function BarraAcoesEmMassa({
 }) {
   const qc = useQueryClient();
   const [dialogo, setDialogo] = useState(false);
+  const [inscrever, setInscrever] = useState(false);
   const [acao, setAcao] = useState<Acao>('MUDAR_STATUS');
   const [valor, setValor] = useState<string>('');
   const [extras, setExtras] = useState<ExtrasStatus>(EXTRAS_VAZIOS);
@@ -168,6 +170,21 @@ export function BarraAcoesEmMassa({
           <Button size="sm" onClick={() => setDialogo(true)}>
             <Zap /> Ação em massa
           </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => setInscrever(true)}
+            disabled={todosDoFiltro || selecionadas.length > 500}
+            title={
+              todosDoFiltro
+                ? 'Disponível apenas para as linhas selecionadas (até 500)'
+                : selecionadas.length > 500
+                  ? 'Máximo de 500 EJs por inscrição'
+                  : undefined
+            }
+          >
+            <Repeat /> Inscrever em cadência
+          </Button>
           <Button size="sm" variant="outline" onClick={() => exportar.mutate()} disabled={exportar.isPending}>
             {exportar.isPending ? <Loader2 className="animate-spin" /> : <Download />}
             Exportar CSV
@@ -177,6 +194,12 @@ export function BarraAcoesEmMassa({
           </Button>
         </div>
       </div>
+
+      <InscreverDialog
+        aberto={inscrever}
+        onFechar={() => setInscrever(false)}
+        ejIds={selecionadas.map((e) => e.id)}
+      />
 
       <Dialog open={dialogo} onOpenChange={setDialogo}>
         <DialogContent>

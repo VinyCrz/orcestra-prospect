@@ -13,6 +13,7 @@ import type {
 import { Prisma, StatusProspeccao } from '@prisma/client';
 import type { UsuarioAutenticado } from '../auth/auth.types';
 import { AuditService } from '../common/audit.service';
+import { ehResposta, encerrarInscricoes } from '../cadencias/encerramento';
 import { exigirEdicaoEj } from '../empresas-juniores/permissoes';
 import { ScoreService } from '../score/score.service';
 import { PrismaService } from '../prisma/prisma.service';
@@ -106,6 +107,7 @@ export class InteracoesService {
         select: SELECT_INTERACAO,
       });
       await this.score.recalcularEj(ejId, tx);
+      if (ehResposta(i.resultado)) await encerrarInscricoes(tx, { empresaJuniorId: ejId }, 'RESPOSTA', usuario.id);
       await this.audit.registrar(
         {
           usuarioId: usuario.id,
@@ -170,6 +172,8 @@ export class InteracoesService {
       }
       const nova = await tx.interacao.update({ where: { id }, data, select: SELECT_INTERACAO });
       await this.score.recalcularEj(atual.empresaJuniorId, tx);
+      if (input.resultado !== undefined && ehResposta(nova.resultado))
+        await encerrarInscricoes(tx, { empresaJuniorId: atual.empresaJuniorId }, 'RESPOSTA', usuario.id);
       await this.audit.registrar(
         {
           usuarioId: usuario.id,

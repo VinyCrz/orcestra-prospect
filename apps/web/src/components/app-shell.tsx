@@ -5,6 +5,8 @@ import { usePathname, useRouter } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import {
   Briefcase,
+  FileText,
+  Repeat,
   Building2,
   CalendarCheck,
   KanbanSquare,
@@ -45,6 +47,8 @@ const NAV: ItemNav[] = [
   { href: '/empresas-juniores', label: 'Empresas Juniores', icon: Building2 },
   { href: '/funil', label: 'Funil', icon: KanbanSquare },
   { href: '/agenda', label: 'Agenda', icon: CalendarCheck },
+  { href: '/templates', label: 'Templates', icon: FileText },
+  { href: '/cadencias', label: 'Cadências', icon: Repeat },
   { href: '/carteira', label: 'Carteira', icon: Briefcase, papeis: ['ADMIN', 'GESTOR'] },
   { href: '/importacoes', label: 'Importações', icon: Upload, papeis: ['ADMIN', 'GESTOR'] },
   { href: '/usuarios', label: 'Usuários', icon: Users, papeis: ['ADMIN'] },

@@ -20,6 +20,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { api } from '@/lib/api';
+import { MOTIVO_ENCERRAMENTO_LABEL } from '@/lib/tipos-cadencias';
 import type { EventoTimeline, PaginaTimeline } from '@/lib/tipos-funil';
 
 const dataHora = new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
@@ -40,6 +41,12 @@ const ROTULO: Record<TipoTimeline, string> = {
   CONTATO: 'Contato',
   TAREFA_CRIADA: 'Tarefa criada',
   TAREFA_CONCLUIDA: 'Tarefa concluída',
+};
+
+const ACAO_CADENCIA: Record<string, string> = {
+  CADENCIA_INSCRITA: 'Inscrita em cadência',
+  CADENCIA_ENCERRADA: 'Cadência encerrada',
+  CADENCIA_CONCLUIDA: 'Cadência concluída',
 };
 
 function Descricao({ e }: { e: EventoTimeline }) {
@@ -77,6 +84,17 @@ function Descricao({ e }: { e: EventoTimeline }) {
       );
     case 'EDICAO':
     case 'CONTATO': {
+      const cad = d.acao ? ACAO_CADENCIA[d.acao] : undefined;
+      if (cad) {
+        const motivo = (d.dados?.depois as { motivo?: string } | null | undefined)?.motivo;
+        const rot = motivo ? MOTIVO_ENCERRAMENTO_LABEL[motivo as keyof typeof MOTIVO_ENCERRAMENTO_LABEL] : null;
+        return (
+          <p className="text-sm font-medium">
+            {cad}
+            {rot && <span className="font-normal text-muted-foreground"> · {rot}</span>}
+          </p>
+        );
+      }
       const campos = Object.keys(d.dados?.depois ?? {});
       return (
         <p className="text-sm">
@@ -134,7 +152,10 @@ export function Timeline({ ejId }: { ejId: string }) {
         ) : (
           <ol className="grid gap-4" data-testid="timeline">
             {eventos.map((e) => {
-              const Icone = ICONE[e.tipo];
+              const Icone =
+                e.tipo === 'EDICAO' && e.detalhes.acao && ACAO_CADENCIA[e.detalhes.acao]
+                  ? Repeat
+                  : ICONE[e.tipo];
               return (
                 <li key={e.id} className="flex gap-3">
                   <span className="mt-0.5 grid size-8 shrink-0 place-items-center rounded-full bg-accent text-accent-foreground">

@@ -9,6 +9,7 @@ import {
   mascararNome,
   mascararTelefone,
 } from '../common/audit.service';
+import { encerrarInscricoes } from '../cadencias/encerramento';
 import { exigirEdicaoEj } from '../empresas-juniores/permissoes';
 import { ScoreService } from '../score/score.service';
 import { PrismaService } from '../prisma/prisma.service';
@@ -169,6 +170,8 @@ export class ContatosService {
       if (input.principal) await this.limparPrincipal(tx, atual.empresaJuniorId, id);
       const novo = await tx.contato.update({ where: { id }, data });
       await this.score.recalcularEj(atual.empresaJuniorId, tx);
+      if (input.optOut === true && !atual.optOut)
+        await encerrarInscricoes(tx, { contatoId: id }, 'OPT_OUT', usuario.id);
       const d = diffCampos(snapContato(atual), snapContato(novo), MASCARAS_CONTATO);
       if (d) {
         await this.audit.registrar(

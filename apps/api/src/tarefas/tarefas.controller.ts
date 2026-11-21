@@ -13,16 +13,19 @@ import {
   agendaQuerySchema,
   atualizarTarefaSchema,
   criarTarefaSchema,
+  registrarEnvioSchema,
   listarTarefasQuerySchema,
   ORIGENS_TAREFA,
   type AdiarTarefaInput,
   type AgendaQuery,
   type AtualizarTarefaInput,
   type CriarTarefaInput,
+  type RegistrarEnvioInput,
   type ListarTarefasQuery,
 } from '@orcestra/shared';
 import type { UsuarioAutenticado } from '../auth/auth.types';
 import { UsuarioAtual } from '../auth/decorators/usuario-atual.decorator';
+import { MensagemPassoService } from '../cadencias/mensagem-passo.service';
 import { ZodValidationPipe } from '../common/zod-validation.pipe';
 import { TarefasService } from './tarefas.service';
 
@@ -45,7 +48,10 @@ class AdiarDto {
 @ApiBearerAuth()
 @Controller('tarefas')
 export class TarefasController {
-  constructor(private readonly service: TarefasService) {}
+  constructor(
+    private readonly service: TarefasService,
+    private readonly mensagens: MensagemPassoService,
+  ) {}
 
   @Get('agenda')
   @ApiOperation({
@@ -81,6 +87,31 @@ export class TarefasController {
     @UsuarioAtual() u: UsuarioAutenticado,
   ) {
     return this.service.listar(q, u);
+  }
+
+  @Get(':id/mensagem')
+  @ApiOperation({
+    summary: 'Mensagem do passo de cadência já preenchida (nada é enviado).',
+    description:
+      'Resposta: `{canal, assunto?, texto, contato:{id,nome,email?,telefone?,optOut}, links:{waMe?, mailto?}}`. ' +
+      'Contato em opt-out ou ausente = 422 (sem links).',
+  })
+  mensagem(@Param('id') id: string, @UsuarioAtual() u: UsuarioAutenticado) {
+    return this.mensagens.mensagem(id, u);
+  }
+
+  @Post(':id/registrar-envio')
+  @HttpCode(200)
+  @ApiOperation({
+    summary: 'Confirma o envio manual: cria a Interação do passo (SEM_RESPOSTA) e conclui a tarefa.',
+    description: 'Body `{resumo?, contatoId?}`. Resposta: `{interacaoId, tarefaId, inscricaoConcluida}`.',
+  })
+  registrarEnvio(
+    @Param('id') id: string,
+    @Body(new ZodValidationPipe(registrarEnvioSchema)) body: RegistrarEnvioInput,
+    @UsuarioAtual() u: UsuarioAutenticado,
+  ) {
+    return this.mensagens.registrarEnvio(id, body, u);
   }
 
   @Post()

@@ -5,8 +5,17 @@
  *     nunca sobrescreve nome/ativo/ordem editados pelo ADMIN.
  *  3. Score de ICP: ConfigScore "default" e critérios — só cria o que falta.
  *  4. Federações (data/federacoes.json), IES e EJs (data/ejs.json) — upsert por chave estável.
+ *  5. Templates de mensagem e cadência inicial (Etapa 5) — criados só se não existir um com a mesma
+ *     `chave` ou `nome`; nunca sobrescreve textos/passos editados pelo usuário.
  */
-import { type CriterioIcp, Prisma, PrismaClient, type Regiao, TipoTag } from '@prisma/client';
+import {
+  type Canal,
+  type CriterioIcp,
+  Prisma,
+  PrismaClient,
+  type Regiao,
+  TipoTag,
+} from '@prisma/client';
 import { chaveDedupe, chaveNome, normalizarNomeIes, type EjColetada } from '@orcestra/shared';
 import * as argon2 from 'argon2';
 import { existsSync, readFileSync } from 'node:fs';
@@ -187,6 +196,140 @@ async function seedScore() {
   );
 }
 
+const ASSINATURA = "{{nome_sdr}}\nOrc'estra Gamificação";
+
+const TEMPLATES: { chave: string; nome: string; canal: Canal; assunto?: string; corpo: string }[] =
+  [
+    {
+      chave: 'gamificacao-linkedin-conexao',
+      nome: 'Gamificação — convite de conexão (LinkedIn)',
+      canal: 'LINKEDIN',
+      corpo:
+        "Olá, {{nome_contato}}! Sou {{nome_sdr}}, da Orc'estra Gamificação. Trabalho com empresas " +
+        'juniores em gamificação para engajamento e retenção de membros e gostaria de me conectar ' +
+        'para acompanhar o trabalho da {{nome_ej}} em {{cidade}}.',
+    },
+    {
+      chave: 'gamificacao-whatsapp-primeiro-contato',
+      nome: 'Gamificação — primeiro contato (WhatsApp)',
+      canal: 'WHATSAPP',
+      corpo:
+        "Olá, {{nome_contato}}! Tudo bem? Sou {{nome_sdr}}, da Orc'estra Gamificação. Vi o trabalho " +
+        'da {{nome_ej}} na {{ies}} e queria uma conversa rápida com você, como {{cargo}}: como vocês ' +
+        'mantêm o engajamento dos membros ao longo do mandato? Ajudamos EJs a usar gamificação ' +
+        '(metas, reconhecimento e acompanhamento) na rotina interna. Topa 20 minutos esta semana?',
+    },
+    {
+      chave: 'gamificacao-email-apresentacao',
+      nome: 'Gamificação — apresentação (e-mail)',
+      canal: 'EMAIL',
+      assunto: '{{nome_ej}}: engajamento e retenção de membros',
+      corpo:
+        'Olá, {{nome_contato}},\n\n' +
+        "Sou {{nome_sdr}}, da Orc'estra Gamificação. Trabalhamos com empresas juniores em programas de " +
+        'gamificação para engajamento e retenção de membros: metas por área, reconhecimento de entregas ' +
+        'e acompanhamento da evolução de cada pessoa ao longo do mandato.\n\n' +
+        'Queda de engajamento e rotatividade são desafios comuns no MEJ. Gostaria de entender como isso ' +
+        'funciona hoje na {{nome_ej}} e avaliar com você se faz sentido para a equipe.\n\n' +
+        'Você teria 20 minutos para uma conversa nos próximos dias? Se outra pessoa da diretoria for ' +
+        'mais indicada, fico grato pela indicação.\n\n' +
+        `Abraço,\n${ASSINATURA}`,
+    },
+  ];
+
+const CADENCIA_INICIAL = {
+  chave: 'gamificacao-ejs-engajamento',
+  nome: 'Gamificação para EJs — engajamento e retenção',
+  descricao:
+    'Abordagem em 4 passos (LinkedIn, WhatsApp, e-mail e ligação) para apresentar gamificação ' +
+    'voltada ao engajamento e à retenção de membros da EJ. Responder ou avançar no funil encerra a cadência.',
+  passos: [
+    {
+      diaOffset: 0,
+      canal: 'LINKEDIN' as Canal,
+      template: 'gamificacao-linkedin-conexao',
+      instrucoes:
+        'Antes de enviar, confira o site/redes da EJ e o cargo do contato. Envie o convite com a nota.',
+    },
+    {
+      diaOffset: 1,
+      canal: 'WHATSAPP' as Canal,
+      template: 'gamificacao-whatsapp-primeiro-contato',
+      instrucoes: 'Use o WhatsApp do contato. Se não houver, siga para o passo de e-mail.',
+    },
+    {
+      diaOffset: 3,
+      canal: 'EMAIL' as Canal,
+      template: 'gamificacao-email-apresentacao',
+      instrucoes:
+        'Envie para o e-mail do contato; se não houver, para o e-mail institucional da EJ.',
+    },
+    {
+      diaOffset: 7,
+      canal: 'LIGACAO' as Canal,
+      template: null,
+      instrucoes:
+        'Follow-up: confirme se a mensagem chegou, pergunte como acompanham o engajamento dos membros ' +
+        'hoje e proponha uma reunião de 20 minutos. Registre o resultado da ligação.',
+    },
+  ],
+};
+
+function variaveisDe(...textos: (string | undefined)[]): string[] {
+  const set = new Set<string>();
+  for (const t of textos) for (const m of (t ?? '').matchAll(/\{\{(\w+)\}\}/g)) set.add(m[1]);
+  return [...set];
+}
+
+async function seedCadencias() {
+  const idsTemplate = new Map<string, string>();
+  let criados = 0;
+  for (const t of TEMPLATES) {
+    const existe = await prisma.templateMensagem.findFirst({
+      where: { OR: [{ chave: t.chave }, { nome: t.nome }] },
+      select: { id: true },
+    });
+    if (existe) {
+      idsTemplate.set(t.chave, existe.id);
+      continue;
+    }
+    const novo = await prisma.templateMensagem.create({
+      data: { ...t, variaveis: variaveisDe(t.assunto, t.corpo) },
+      select: { id: true },
+    });
+    idsTemplate.set(t.chave, novo.id);
+    criados++;
+  }
+  console.log(`• Templates: ${criados} criados (${TEMPLATES.length - criados} já existiam).`);
+
+  const c = CADENCIA_INICIAL;
+  const existe = await prisma.cadencia.findFirst({
+    where: { OR: [{ chave: c.chave }, { nome: c.nome }] },
+    select: { id: true },
+  });
+  if (existe) {
+    console.log('• Cadência inicial já existe — mantida.');
+    return;
+  }
+  await prisma.cadencia.create({
+    data: {
+      chave: c.chave,
+      nome: c.nome,
+      descricao: c.descricao,
+      passos: {
+        create: c.passos.map((p, i) => ({
+          ordem: i + 1,
+          diaOffset: p.diaOffset,
+          canal: p.canal,
+          templateId: p.template ? (idsTemplate.get(p.template) ?? null) : null,
+          instrucoes: p.instrucoes,
+        })),
+      },
+    },
+  });
+  console.log(`• Cadência inicial criada (${c.passos.length} passos).`);
+}
+
 async function seedFederacoes() {
   const feds = lerJson<FederacaoJson[]>('federacoes.json');
   const ids = new Map<string, string>();
@@ -335,6 +478,7 @@ async function main() {
   await seedAdmin();
   await seedMotivosPerda();
   await seedScore();
+  await seedCadencias();
   const ejs = lerJson<EjColetada[]>('ejs.json');
   const feds = await seedFederacoes();
   const tags = await seedTags(ejs);

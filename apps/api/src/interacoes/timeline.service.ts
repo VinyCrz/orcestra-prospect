@@ -32,17 +32,23 @@ export class TimelineService {
     const usuarioSel = { select: { id: true, nome: true } };
 
     const whereAuditEj: Prisma.AuditLogWhereInput = {
-      entidade: 'EmpresaJunior',
-      entidadeId: ejId,
-      // mudanças de status aparecem pelo HistoricoStatus
-      acao: { notIn: ['EJ_STATUS_ALTERADO'] },
+      OR: [
+        {
+          entidade: 'EmpresaJunior',
+          entidadeId: ejId,
+          // mudanças de status aparecem pelo HistoricoStatus
+          acao: { notIn: ['EJ_STATUS_ALTERADO'] },
+        },
+        // inscrição/encerramento de cadência (Etapa 5): aparece como EDICAO com acao CADENCIA_*
+        { entidade: 'InscricaoCadencia', dados: { path: ['empresaJuniorId'], equals: ejId } },
+      ],
     };
     const whereAuditContato: Prisma.AuditLogWhereInput = {
       entidade: 'Contato',
       dados: { path: ['empresaJuniorId'], equals: ejId },
     };
     const whereTarefaCriada = { empresaJuniorId: ejId };
-    const whereTarefaConcluida = { empresaJuniorId: ejId, concluida: true, concluidaEm: { not: null } };
+    const whereTarefaConcluida = { empresaJuniorId: ejId, concluida: true, concluidaEm: { not: null }, canceladaEm: null };
 
     const [cI, cH, cA, cC, cT, cTC, inter, hist, audEj, audCt, tarCri, tarCon] = await Promise.all([
       this.prisma.interacao.count({ where: { empresaJuniorId: ejId } }),

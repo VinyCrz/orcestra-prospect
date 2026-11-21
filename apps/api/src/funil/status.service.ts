@@ -4,6 +4,7 @@ import { Prisma, StatusProspeccao } from '@prisma/client';
 import type { UsuarioAutenticado } from '../auth/auth.types';
 import { AuditService, type RegistroAudit } from '../common/audit.service';
 import { exigirEdicaoEj } from '../empresas-juniores/permissoes';
+import { avancouNoFunil, encerrarInscricoes } from '../cadencias/encerramento';
 import { PrismaService } from '../prisma/prisma.service';
 import { camposDoStatus, type CamposStatus, type EntradaStatus } from './status.regras';
 
@@ -124,6 +125,9 @@ export class StatusService {
       await tx.empresaJunior.updateMany({ where: { id: { in: soCampos } }, data: dados });
     if (historico.length) await tx.historicoStatus.createMany({ data: historico });
     await this.audit.registrarVarios(logs, tx);
+    // avançou no funil (ou perdida/nutrição): encerra cadências ativas e cancela tarefas pendentes
+    if (mudouStatus.length && avancouNoFunil(campos.statusProspeccao))
+      await encerrarInscricoes(tx, { empresaJuniorId: { in: mudouStatus } }, 'AVANCO_FUNIL', usuario.id);
     return { alteradas: logs.length, semMudanca: ejs.length - logs.length };
   }
 

@@ -1,4 +1,4 @@
-import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import type {
   AdiarTarefaInput,
   AtualizarTarefaInput,
@@ -9,6 +9,7 @@ import { Prisma } from '@prisma/client';
 import type { UsuarioAutenticado } from '../auth/auth.types';
 import { AuditService } from '../common/audit.service';
 import { inicioDoDiaSP, limitesAgenda, somarDias } from '../common/fuso';
+import { concluirInscricaoSeCompleta } from '../cadencias/encerramento';
 import { PrismaService } from '../prisma/prisma.service';
 import { agruparAgenda } from './agenda';
 
@@ -162,6 +163,7 @@ export class TarefasService {
         select: SELECT_TAREFA,
       });
       await this.registrar(tx, u, 'TAREFA_CONCLUIDA', id, { concluida: false }, { concluida: true }, atual.empresaJuniorId);
+      await concluirInscricaoSeCompleta(tx, atual.inscricaoCadenciaId, u.id);
       return t;
     });
   }
@@ -169,6 +171,15 @@ export class TarefasService {
   async reabrir(id: string, u: UsuarioAutenticado) {
     const atual = await this.obterEditavel(id, u);
     if (!atual.concluida) return this.prisma.tarefa.findUniqueOrThrow({ where: { id }, select: SELECT_TAREFA });
+    if (atual.canceladaEm) throw new ConflictException('Tarefa cancelada (cadência encerrada) não pode ser reaberta');
+    if (atual.inscricaoCadenciaId) {
+      const insc = await this.prisma.inscricaoCadencia.findUnique({
+        where: { id: atual.inscricaoCadenciaId },
+        select: { status: true },
+      });
+      if (insc && insc.status !== 'ATIVA')
+        throw new ConflictException('A cadência desta tarefa já foi encerrada/concluída');
+    }
     return this.prisma.$transaction(async (tx) => {
       const t = await tx.tarefa.update({
         where: { id },

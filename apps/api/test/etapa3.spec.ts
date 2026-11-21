@@ -35,6 +35,7 @@ describe('regras de status do funil', () => {
       motivoPerda: { findUnique: jest.fn().mockResolvedValue({ ativo: motivoAtivo }) },
       empresaJunior: { updateMany: jest.fn() },
       historicoStatus: { createMany: jest.fn() },
+      inscricaoCadencia: { findMany: jest.fn().mockResolvedValue([]) },
     };
     const audit = { registrarVarios: jest.fn() } as unknown as AuditService;
     return { tx, audit, svc: new StatusService({} as PrismaService, audit) };
@@ -168,7 +169,11 @@ describe('interações', () => {
   function montar(contato: object | null = null, ejResp = 'sdr1', status = 'NAO_TRABALHADA') {
     const tarefaCreate = jest.fn().mockResolvedValue({ id: 't1' });
     const interacaoCreate = jest.fn().mockImplementation(async ({ data }) => ({ id: 'i1', ...data }));
-    const tx = { tarefa: { create: tarefaCreate }, interacao: { create: interacaoCreate } };
+    const tx = {
+      tarefa: { create: tarefaCreate },
+      interacao: { create: interacaoCreate },
+      inscricaoCadencia: { findMany: jest.fn().mockResolvedValue([]) },
+    };
     const prisma = {
       empresaJunior: {
         findUnique: jest.fn().mockResolvedValue({ id: 'e1', nome: 'EJ 1', responsavelId: ejResp, statusProspeccao: status }),
