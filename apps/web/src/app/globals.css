@@ -5,85 +5,96 @@
 
 /*
  * ============================================================
- * TOKENS DA MARCA — troque aqui as cores da Orce'estra.
- * Todo o tema (botões, links, foco, gráficos) deriva destes valores.
+ * TOKENS DA MARCA — Orc'estra Gamificação (fonte: brand/paleta.md).
+ * Escala brand-50..950 derivada de #014E18 (primária, ~700) e #2EB600 (destaque, 500).
+ * A escala é fixa nos dois temas; os tokens semânticos abaixo escolhem o tom.
  * ============================================================
  */
 :root {
-  --brand-50: oklch(0.97 0.02 295);
-  --brand-100: oklch(0.94 0.04 295);
-  --brand-500: oklch(0.56 0.21 295); /* cor principal */
-  --brand-600: oklch(0.5 0.21 295);
-  --brand-700: oklch(0.44 0.19 295);
-  --brand-accent: oklch(0.78 0.16 70); /* destaque / gamificação */
-  --brand-foreground: oklch(0.99 0 0);
+  --brand-50: oklch(0.97 0.02 135);
+  --brand-100: oklch(0.94 0.045 135);
+  --brand-200: oklch(0.89 0.09 137);
+  --brand-300: oklch(0.82 0.15 138);
+  --brand-400: oklch(0.74 0.2 140);
+  --brand-500: oklch(0.65 0.25 138); /* #2EB600 destaque */
+  --brand-600: oklch(0.52 0.15 145);
+  --brand-700: oklch(0.395 0.1 148); /* #014E18 primária */
+  --brand-800: oklch(0.33 0.09 148); /* #003D0D */
+  --brand-900: oklch(0.27 0.07 148);
+  --brand-950: oklch(0.2 0.05 148);
+  --brand-cream: oklch(0.985 0.045 105); /* #FFFBDC */
+  --brand-accent: var(--brand-500);
+  --brand-accent-foreground: var(--brand-950);
+  --brand-foreground: var(--brand-cream);
 
   --radius: 0.625rem;
-  --background: oklch(0.99 0.002 286);
-  --foreground: oklch(0.2 0.02 286);
+  --background: oklch(0.99 0.006 110);
+  --foreground: oklch(0.2 0.03 148);
   --card: oklch(1 0 0);
   --card-foreground: var(--foreground);
   --popover: oklch(1 0 0);
   --popover-foreground: var(--foreground);
-  --primary: var(--brand-500);
-  --primary-foreground: var(--brand-foreground);
-  --secondary: oklch(0.96 0.006 286);
-  --secondary-foreground: oklch(0.25 0.02 286);
-  --muted: oklch(0.965 0.005 286);
-  --muted-foreground: oklch(0.5 0.016 286);
-  --accent: var(--brand-50);
-  --accent-foreground: var(--brand-700);
-  --destructive: oklch(0.58 0.22 27);
-  --success: oklch(0.6 0.15 155);
-  --warning: oklch(0.75 0.15 75);
-  --faixa-a: oklch(0.52 0.15 155);
-  --faixa-b: oklch(0.5 0.17 250);
-  --faixa-c: oklch(0.55 0.13 75);
-  --faixa-d: oklch(0.5 0.016 286);
-  --chart-1: oklch(0.56 0.21 295);
-  --chart-2: oklch(0.6 0.15 155);
-  --chart-3: oklch(0.55 0.17 250);
-  --chart-4: oklch(0.7 0.16 70);
-  --chart-5: oklch(0.58 0.2 350);
-  --chart-6: oklch(0.55 0.1 200);
-  --border: oklch(0.91 0.006 286);
-  --input: oklch(0.91 0.006 286);
-  --ring: var(--brand-500);
-  --sidebar: oklch(0.985 0.003 286);
+  --primary: var(--brand-700);
+  --primary-foreground: var(--brand-cream);
+  --secondary: oklch(0.96 0.01 120);
+  --secondary-foreground: oklch(0.27 0.04 148);
+  --muted: oklch(0.96 0.01 120);
+  --muted-foreground: oklch(0.48 0.025 140);
+  --accent: var(--brand-100);
+  --accent-foreground: var(--brand-800);
+  --destructive: oklch(0.52 0.22 27);
+  --success: oklch(0.48 0.14 148);
+  --warning: oklch(0.5 0.11 75);
+  --faixa-a: oklch(0.46 0.13 150);
+  --faixa-b: oklch(0.5 0.17 255);
+  --faixa-c: oklch(0.5 0.11 75);
+  --faixa-d: oklch(0.48 0.02 140);
+  --chart-1: oklch(0.5 0.14 145);
+  --chart-2: oklch(0.55 0.17 255);
+  --chart-3: oklch(0.75 0.16 80);
+  --chart-4: oklch(0.58 0.2 350);
+  --chart-5: oklch(0.7 0.1 200);
+  --chart-6: oklch(0.45 0.08 60);
+  --border: oklch(0.91 0.012 125);
+  --input: oklch(0.91 0.012 125);
+  --ring: var(--brand-600);
+  --sidebar: oklch(0.975 0.012 120);
   --sidebar-foreground: var(--foreground);
+  --logo-bg: var(--brand-700);
+  --logo-foreground: var(--brand-cream);
 }
 
 .dark {
-  --brand-50: oklch(0.28 0.06 295);
-  --brand-100: oklch(0.32 0.08 295);
-  --brand-500: oklch(0.66 0.19 295);
-  --brand-600: oklch(0.7 0.17 295);
-  --brand-700: oklch(0.82 0.11 295);
-
-  --background: oklch(0.16 0.012 286);
-  --foreground: oklch(0.96 0.004 286);
-  --card: oklch(0.2 0.014 286);
-  --popover: oklch(0.2 0.014 286);
-  --secondary: oklch(0.26 0.014 286);
-  --secondary-foreground: oklch(0.96 0.004 286);
-  --muted: oklch(0.25 0.012 286);
-  --muted-foreground: oklch(0.7 0.014 286);
-  --accent: var(--brand-50);
-  --accent-foreground: var(--brand-700);
-  --destructive: oklch(0.65 0.2 25);
-  --faixa-a: oklch(0.76 0.16 155);
-  --faixa-b: oklch(0.74 0.12 250);
+  --background: oklch(0.17 0.02 148);
+  --foreground: oklch(0.96 0.02 110);
+  --card: oklch(0.21 0.022 148);
+  --popover: oklch(0.21 0.022 148);
+  --primary: var(--brand-400);
+  --primary-foreground: var(--brand-950);
+  --secondary: oklch(0.27 0.02 148);
+  --secondary-foreground: oklch(0.96 0.02 110);
+  --muted: oklch(0.26 0.02 148);
+  --muted-foreground: oklch(0.72 0.02 140);
+  --accent: oklch(0.3 0.06 148);
+  --accent-foreground: oklch(0.92 0.07 135);
+  --destructive: oklch(0.7 0.19 25);
+  --success: oklch(0.78 0.17 145);
+  --warning: oklch(0.82 0.14 80);
+  --faixa-a: oklch(0.78 0.17 145);
+  --faixa-b: oklch(0.74 0.12 255);
   --faixa-c: oklch(0.82 0.14 80);
-  --faixa-d: oklch(0.7 0.014 286);
-  --chart-1: oklch(0.7 0.19 295);
-  --chart-2: oklch(0.76 0.16 155);
-  --chart-3: oklch(0.74 0.12 250);
-  --chart-4: oklch(0.82 0.14 80);
-  --chart-5: oklch(0.74 0.17 350);
-  --chart-6: oklch(0.76 0.1 200);
+  --faixa-d: oklch(0.72 0.02 140);
+  --chart-1: oklch(0.74 0.2 140);
+  --chart-2: oklch(0.74 0.12 255);
+  --chart-3: oklch(0.82 0.14 80);
+  --chart-4: oklch(0.74 0.17 350);
+  --chart-5: oklch(0.76 0.1 200);
+  --chart-6: oklch(0.7 0.1 50);
   --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 14%);
-  --sidebar: oklch(0.18 0.013 286);
+  --ring: var(--brand-400);
+  --sidebar: oklch(0.2 0.022 148);
+  --logo-bg: var(--brand-800);
 }
 
 @theme inline {
@@ -121,10 +132,20 @@
   --color-sidebar-foreground: var(--sidebar-foreground);
   --color-brand-50: var(--brand-50);
   --color-brand-100: var(--brand-100);
+  --color-brand-200: var(--brand-200);
+  --color-brand-300: var(--brand-300);
+  --color-brand-400: var(--brand-400);
   --color-brand-500: var(--brand-500);
   --color-brand-600: var(--brand-600);
   --color-brand-700: var(--brand-700);
+  --color-brand-800: var(--brand-800);
+  --color-brand-900: var(--brand-900);
+  --color-brand-950: var(--brand-950);
+  --color-brand-cream: var(--brand-cream);
   --color-brand-accent: var(--brand-accent);
+  --color-brand-accent-foreground: var(--brand-accent-foreground);
+  --color-logo-bg: var(--logo-bg);
+  --color-logo-foreground: var(--logo-foreground);
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);

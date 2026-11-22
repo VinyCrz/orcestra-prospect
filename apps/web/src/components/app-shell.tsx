@@ -148,7 +148,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-svh lg:grid lg:grid-cols-[240px_1fr]">
       <aside className="hidden border-r bg-sidebar lg:flex lg:flex-col lg:gap-6 lg:p-4">
-        <Logo className="px-2 pt-1" />
+        <Logo completa className="px-1 pt-1" />
         {nav}
       </aside>
 
@@ -157,7 +157,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <div className="absolute inset-0 bg-black/40" onClick={() => setMenuAberto(false)} />
           <aside className="absolute inset-y-0 left-0 flex w-64 flex-col gap-6 border-r bg-sidebar p-4">
             <div className="flex items-center justify-between">
-              <Logo />
+              <Logo completa />
               <Button
                 variant="ghost"
                 size="icon"

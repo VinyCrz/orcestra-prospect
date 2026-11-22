@@ -89,7 +89,7 @@ function Progresso({ rotulo, atual, meta, pct }: { rotulo: string; atual: number
         className="h-2.5 overflow-hidden rounded-full bg-muted"
       >
         <div
-          className={cn('h-full rounded-full', pct >= 100 ? 'bg-success' : 'bg-primary')}
+          className={cn('h-full rounded-full', pct >= 100 ? 'bg-brand-accent' : 'bg-primary')}
           style={{ width: `${meta > 0 ? valor : 0}%` }}
         />
       </div>
@@ -256,7 +256,7 @@ export function BlocoSemana({
                     <span
                       className={cn(
                         'flex size-9 shrink-0 items-center justify-center rounded-full',
-                        c.conquistada ? 'bg-brand-accent text-foreground' : 'bg-muted text-muted-foreground',
+                        c.conquistada ? 'bg-brand-accent text-brand-accent-foreground' : 'bg-muted text-muted-foreground',
                       )}
                     >
                       <Icone className="size-5" aria-hidden />

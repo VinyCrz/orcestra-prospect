@@ -212,8 +212,12 @@ Os e2e criam e apagam os próprios dados (`QA TESTE …`), inclusive as supress�
 
 ## Design
 
-Tokens de marca em CSS variables no topo de `apps/web/src/app/globals.css` (`--brand-*`): troque ali
-as cores da Orce'estra. Modo claro/escuro (segue o sistema, com alternância no topo) e layout responsivo.
+Identidade da Orc'estra Gamificação (`brand/paleta.md`): escala `--brand-50..950` em oklch no topo de
+`apps/web/src/app/globals.css`, derivada de `#014E18` (primária, `brand-700`; no escuro `brand-400`), `#003D0D`
+(`brand-800`, fundo do logo), `#FFFBDC` (`--brand-cream`, texto sobre verde) e `#2EB600` (`brand-500`, destaque:
+conquistas e meta batida). Cores só por tokens, nada hardcoded. Texto normal com contraste AA (>= 4.5:1) nos dois temas.
+Modo claro/escuro (segue o sistema, com alternância no topo) e layout responsivo. O componente `Logo` usa
+`apps/web/public/brand/` (logo completa na sidebar e no login; ícone + "Prospect" no topo em telas estreitas).
 
 ## Decisões
 
@@ -336,8 +340,8 @@ as cores da Orce'estra. Modo claro/escuro (segue o sistema, com alternância no 
 
 ### Fase 3 — marca
 
-- `brand/paleta.md` e o logo **não foram enviados**: não inventamos cores. Os tokens (`--brand-*`, `--faixa-*`, `--chart-*`)
-  estão prontos em `apps/web/src/app/globals.css` para troca.
+- Paleta e logo recebidos em 22/11/2026 e aplicados (tokens, `Logo`, favicon, theme-color). **Pendente:** versão maior ou
+  SVG da logo (a enviada tem 378x159 e pode serrilhar em telas grandes/retina); fonte pixel da marca não usada na interface.
 
 ### Ajustes pós-etapa 7 (pedido do usuário, 22/11/2026)
 

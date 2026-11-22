@@ -1,14 +1,43 @@
+import Image from 'next/image';
 import { cn } from '@/lib/utils';
 
-export function Logo({ className }: { className?: string }) {
+/**
+ * Marca Orc'estra. A arte tem fundo verde próprio, então vai em bloco arredondado.
+ * `completa`: logo larga (>= sm); em telas estreitas vira ícone + "Prospect".
+ */
+export function Logo({
+  className,
+  completa = false,
+}: {
+  className?: string;
+  completa?: boolean;
+}) {
   return (
     <div className={cn('flex items-center gap-2 font-semibold tracking-tight', className)}>
-      <span className="grid size-8 place-items-center rounded-lg bg-primary text-sm font-bold text-primary-foreground shadow-sm">
-        O
-      </span>
-      <span>
-        Orce&apos;estra <span className="text-primary">Prospect</span>
-      </span>
+      {completa ? (
+        <Image
+          src="/brand/logo-orcestra.png"
+          alt="Orc'estra Gamificação"
+          width={378}
+          height={159}
+          priority
+          className="h-12 w-auto rounded-lg bg-logo-bg shadow-sm"
+        />
+      ) : (
+        <>
+          <Image
+            src="/brand/icone-orcestra.png"
+            alt="Orc'estra Gamificação"
+            width={49}
+            height={56}
+            priority
+            className="h-8 w-auto rounded-md bg-logo-bg p-1 shadow-sm"
+          />
+          <span>
+            Prospect
+          </span>
+        </>
+      )}
     </div>
   );
 }
