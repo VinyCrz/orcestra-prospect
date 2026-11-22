@@ -177,6 +177,22 @@ export function FiltrosSheet({
             opcoes={FAIXAS_ICP.map((f) => ({ valor: f, rotulo: `Faixa ${f}` }))}
           />
           <div className="grid gap-2">
+            <Label htmlFor="f-com-contato">Forma de contato</Label>
+            <Select
+              value={rascunho.comContato ?? QUALQUER}
+              onValueChange={(v) => set('comContato', v === QUALQUER ? undefined : v)}
+            >
+              <SelectTrigger id="f-com-contato">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={QUALQUER}>Todas</SelectItem>
+                <SelectItem value="true">Somente com contato (e-mail, telefone, redes ou site)</SelectItem>
+                <SelectItem value="false">Somente sem nenhum contato</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="grid gap-2">
             <Label htmlFor="f-federada">Federada</Label>
             <Select
               value={rascunho.federada ?? QUALQUER}

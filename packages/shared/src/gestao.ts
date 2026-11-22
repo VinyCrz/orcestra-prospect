@@ -96,6 +96,8 @@ export const filtrosEjSchema = z.object({
   membrosMin: intQuery(),
   membrosMax: intQuery(),
   federada: boolQuery,
+  /** true = EJ com alguma forma de contato (canal institucional ou contato cadastrado fora de opt-out); false = nenhuma */
+  comContato: boolQuery,
   status: lista(z.enum(STATUS_PROSPECCAO)),
   scoreMin: intQuery(0, 100),
   scoreMax: intQuery(0, 100),

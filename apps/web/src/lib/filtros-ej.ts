@@ -12,7 +12,7 @@ export const CHAVES_LISTA = [
   'faixaIcp',
 ] as const;
 export const CHAVES_NUM = ['membrosMin', 'membrosMax', 'scoreMin', 'scoreMax'] as const;
-export const CHAVES_FILTRO = ['busca', ...CHAVES_LISTA, ...CHAVES_NUM, 'federada'] as const;
+export const CHAVES_FILTRO = ['busca', ...CHAVES_LISTA, ...CHAVES_NUM, 'federada', 'comContato'] as const;
 
 export type FiltrosUrl = Partial<Record<(typeof CHAVES_FILTRO)[number], string>>;
 
@@ -38,6 +38,7 @@ export function urlParaFiltros(f: FiltrosUrl): FiltrosEj {
   for (const k of CHAVES_LISTA) if (f[k]) out[k] = listaDe(f[k]);
   for (const k of CHAVES_NUM) if (f[k] !== undefined) out[k] = Number(f[k]);
   if (f.federada) out.federada = f.federada === 'true';
+  if (f.comContato) out.comContato = f.comContato === 'true';
   return out as FiltrosEj;
 }
 
@@ -52,6 +53,7 @@ export function filtrosParaUrl(f: FiltrosEj): FiltrosUrl {
   }
   for (const k of CHAVES_NUM) if (typeof o[k] === 'number') out[k] = String(o[k]);
   if (typeof o.federada === 'boolean') out.federada = String(o.federada);
+  if (typeof o.comContato === 'boolean') out.comContato = String(o.comContato);
   return out;
 }
 

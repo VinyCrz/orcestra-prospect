@@ -44,6 +44,7 @@ const FILTROS_DOC = [
   { name: 'membrosMin', type: Number },
   { name: 'membrosMax', type: Number },
   { name: 'federada', type: Boolean },
+  { name: 'comContato', type: Boolean, description: 'true = com alguma forma de contato; false = sem nenhuma' },
   { name: 'status', description: `Multi: ${STATUS_PROSPECCAO.join(', ')}` },
   { name: 'scoreMin', type: Number },
   { name: 'scoreMax', type: Number },
