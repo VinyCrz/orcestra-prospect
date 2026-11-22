@@ -45,7 +45,7 @@ pnpm dev                        # API em :3001 e web em :3000
 | ----------- | -------------------------------------------------------------------------- |
 | Aplicação   | http://localhost:3000                                                      |
 | API         | http://localhost:3001                                                      |
-| Swagger     | http://localhost:3001/docs                                                 |
+| Swagger     | http://localhost:3001/docs — **só com a API em dev** (`pnpm dev`); desligado com `NODE_ENV=production` (container) |
 | Healthcheck | http://localhost:3001/health (também via http://localhost:3000/api/health) |
 
 Usuário inicial: o que estiver em `ADMIN_EMAIL` / `ADMIN_SENHA` no `.env`
@@ -90,10 +90,14 @@ data/             ejs.json, ejs.csv, federacoes.json, RELATORIO.md (cache em dat
   de um token já revogado derruba todas as sessões do usuário.
 - Guards globais: `JwtAuthGuard` (exige token e usuário **ativo** — desativar um usuário corta o acesso
   imediatamente) e `RolesGuard` (`@Papeis('ADMIN')`). Rotas públicas usam `@Public()`.
-- Papéis: **ADMIN** (gestão de usuários), **GESTOR**, **SDR**. Nesta etapa GESTOR e SDR têm o mesmo acesso
-  de leitura à base; as diferenças entram nas próximas etapas.
-- "Esqueci minha senha": gera token de uso único (1 h) e **registra o link no log da API**
-  (`docker compose logs api | grep esqueci`). A resposta é idêntica exista ou não o e-mail.
+- Papéis: ver **Papéis e permissões** abaixo.
+- Senhas: mínimo 10 caracteres com letra, número e símbolo (`senhaSchema` do shared, usado na API, no front e no seed).
+- **Rate limit** (`@nestjs/throttler`): login 5/min por IP+e-mail; refresh, esqueci e redefinir senha 10/min por IP
+  (`RATE_LIMIT_LOGIN_POR_MIN` / `RATE_LIMIT_AUTH_POR_MIN`). Acima disso, 429 com mensagem em pt-BR.
+- `helmet`, `trust proxy` = 1 (o proxy do web sobrescreve `X-Forwarded-For`), CORS desligado por padrão.
+- Login com sucesso e falha vão para o AuditLog (`LOGIN_OK` / `LOGIN_FALHOU`, e-mail mascarado), com IP.
+- "Esqueci minha senha": gera token de uso único (1 h). **Fora de produção** o link vai para o log da API
+  (`docker compose logs api | grep esqueci`); em produção não. A resposta é idêntica exista ou não o e-mail.
 - Front: o `middleware` redireciona para `/login` quando não há cookie de sessão; o layout logado valida a
   sessão e o papel (a API valida de novo).
 
@@ -134,12 +138,77 @@ Para atualizar: `pnpm coleta` (usa cache; `--atualizar` ignora o cache das pági
 `--limite-cnpj=N` limita consultas novas) e depois `pnpm db:seed`. O seed **não sobrescreve** campos de
 trabalho comercial (status, score, responsável, observações, verificado).
 
+## Variáveis de ambiente
+
+Copie `.env.example` para `.env`. Todas estão comentadas no arquivo; as principais:
+
+| Variável | Para quê |
+| --- | --- |
+| `POSTGRES_*`, `DATABASE_URL` | banco (no compose a API usa o host `postgres`) |
+| `REDIS_URL` | filas BullMQ (importação, score, alertas, gamificação) |
+| `JWT_ACCESS_SECRET` | assinatura do access token — `openssl rand -base64 48` |
+| `JWT_ACCESS_TTL`, `REFRESH_TOKEN_TTL_DIAS` | validade dos tokens |
+| `COOKIE_SECURE` | `true` em produção (HTTPS) |
+| `WEB_URL` | URL pública do front (link de redefinição de senha) |
+| `CORS_ORIGINS` | vazio = CORS desligado (o browser só fala com a API pelo proxy `/api/*`) |
+| `SUPRESSAO_PEPPER` | pepper do HMAC da lista de supressão LGPD — `openssl rand -hex 32`; **obrigatório em produção, não troque depois de usar** |
+| `RATE_LIMIT_LOGIN_POR_MIN`, `RATE_LIMIT_AUTH_POR_MIN` | rate limit (padrão 5 e 10). No `.env` de dev desta máquina estão em 30 e 120 porque a suíte Playwright faz muitos logins/refresh por minuto |
+| `API_INTERNAL_URL` | URL que o servidor Next usa para chegar na API |
+| `ADMIN_NOME`, `ADMIN_EMAIL`, `ADMIN_SENHA` | ADMIN criado pelo seed (senha precisa atender à política) |
+
+## Papéis e permissões
+
+| Ação | SDR | GESTOR | ADMIN |
+| --- | --- | --- | --- |
+| Ver EJs, contatos, funil, dashboard | ✅ (dashboard só os dados dele) | ✅ | ✅ |
+| Editar EJ, registrar interação, mover no kanban, inscrever em cadência | só EJs da carteira dele | ✅ | ✅ |
+| Carteira (atribuir/rodízio), importação CSV/XLSX | — | ✅ | ✅ |
+| Templates de mensagem | ler | ✅ | ✅ |
+| Desmarcar opt-out, exportar/anonimizar/excluir contato | — | ✅ | ✅ |
+| Cadências, score de ICP, metas, motivos de perda, usuários, auditoria, LGPD/retenção | ler (onde houver tela) | ler | ✅ |
+
+## Funcionalidades e como testar
+
+| Etapa | Onde | Como testar rapidamente |
+| --- | --- | --- |
+| 1–2 Base, filtros, contatos, listas, ações em massa, carteira, importação | `/empresas-juniores`, `/carteira`, `/importacoes` | filtrar por UF/faixa, abrir uma EJ, salvar uma lista |
+| 3 Funil, interações, timeline, agenda | `/funil`, detalhe da EJ, `/agenda` | registrar interação com próximo passo → tarefa aparece na agenda; arrastar card no kanban |
+| 4 Score de ICP | badge A/B/C/D, card "Score de ICP" no detalhe, `/configuracoes/score`, "Prioridades da semana" na agenda | mudar um peso e salvar → recálculo em fila |
+| 5 Templates e cadências | `/templates`, `/cadencias`, seção "Cadências" na EJ, "Gerar mensagem" na agenda | inscrever uma EJ → tarefa do passo → gerar mensagem → copiar/abrir WhatsApp ou e-mail → marcar como enviada. **Nada é enviado automaticamente** |
+| 6 Dashboard e gamificação | `/dashboard`, `/configuracoes/metas` | trocar período; ver ranking, barra de meta e conquistas |
+| 7 LGPD, auditoria, segurança | contatos (opt-out, exportar, anonimizar), `/configuracoes/auditoria`, `/configuracoes/lgpd`, `/politica-de-dados` | marcar opt-out (motivo obrigatório) → links somem; filtrar a auditoria por ação |
+
+## LGPD
+
+- **Opt-out** bloqueia o contato em toda a plataforma (mensagens, links, inscrição em cadência, importação). Marcar exige
+  motivo, grava data, `HistoricoOptOut` (append-only), encerra cadências e cancela tarefas do contato. Só GESTOR/ADMIN desmarcam.
+- **Lista de supressão**: e-mails/telefones em opt-out ou anonimizados ficam só como hash HMAC (`SUPRESSAO_PEPPER`);
+  impede recriar o contato à mão ou por importação. Depois de um deploy ou troca de pepper: `POST /lgpd/supressao/backfill` (ADMIN, botão em `/configuracoes/lgpd`).
+- **Direitos do titular**: `GET /contatos/:id/exportar` (JSON) e `POST /contatos/:id/anonimizar` (definitivo), GESTOR/ADMIN, ambos auditados.
+- **Retenção**: nada é apagado automaticamente. `/configuracoes/lgpd` lista contatos com mandato encerrado há mais de 24 meses
+  e sem interação há 24 meses; o ADMIN revisa e anonimiza. Detalhes em `docs/base-ejs.md` e na página `/politica-de-dados`.
+- **Pendente**: preencher o e-mail do encarregado (DPO) em `/politica-de-dados` (está como `[preencher]`).
+
+## Backup do banco
+
+```bash
+mkdir -p backups
+sg docker -c "docker compose exec -T postgres pg_dump -U orcestra -d orcestra_prospect -Fc" > backups/orcestra_$(date +%Y%m%d_%H%M).dump
+```
+
+Restaurar (em banco vazio): `sg docker -c "docker compose exec -T postgres pg_restore -U orcestra -d orcestra_prospect --clean --if-exists" < backups/<arquivo>.dump`.
+Faça backup antes de qualquer operação destrutiva. `backups/` fica fora do git.
+
 ## Testes
 
 ```bash
-pnpm test        # 23 testes do normalizador/deduplicador/LGPD + 23 do auth (login, refresh, guards de papel)
-pnpm test:e2e    # login → lista de EJs → filtro por UF → detalhe (stack precisa estar no ar)
+pnpm test        # Vitest (shared: normalizador, score, cadências, templates) + Jest (API: auth, permissões, etapas 3–7)
+pnpm --filter @orcestra/web exec playwright test --workers=1   # 23 e2e; stack no ar (docker compose)
 ```
+
+Os e2e criam e apagam os próprios dados (`QA TESTE …`), inclusive as supressões dos contatos de teste
+(`apps/web/e2e/supressao.ts`). `jornada.spec.ts` cobre login → filtrar EJ → registrar interação → mover no kanban → dashboard.
+**Nesta máquina (~10 GB RAM)** rode builds e Playwright sozinhos e com `--workers=1` (ver `CLAUDE.md`).
 
 ## Design
 
@@ -229,3 +298,43 @@ as cores da Orce'estra. Modo claro/escuro (segue o sistema, com alternância no 
   em até 3 dias ou atrasado -> `NUTRICAO_RETORNO` (vencimento = data de retorno). Tarefa vai para o responsável da EJ; sem
   responsável (ou inativo) é pulada e contada em `semResponsavel`. Idempotência por `chaveIdempotencia` única
   (`mandato:<contatoId>:<fim>` / `nutricao:<ejId>:<data>`) com `createMany skipDuplicates`.
+
+### Etapa 4 — score de ICP
+
+- **Cálculo puro em `packages/shared/src/score.ts`** (usado pela API e pela prévia do front): score = 100 × pontos ÷ soma dos
+  pesos ativos; critério sem dado vale 0 com motivo "sem dado". Faixas por limiares configuráveis (padrão A ≥ 75, B ≥ 50, C ≥ 25).
+- Recálculo em fila BullMQ `score`, em lotes, só das EJs com versão de score desatualizada; recálculo unitário ao editar EJ,
+  contatos, tags e ao registrar interação. No boot, EJs nunca calculadas são enfileiradas.
+- Com a base atual (pouca informação de membros, decisores e interações) nenhuma EJ fica em A/B — ajuste pesos/limiares em
+  `/configuracoes/score` ou enriqueça a base.
+
+### Etapa 5 — cadências e templates
+
+- Inscrição em lote (até 500 EJs) numa transação; ignora EJ fora da carteira (SDR), PERDIDA, já avançada no funil, já inscrita
+  ou com contato em opt-out. Tarefas com origem CADENCIA vencem em hoje (SP) + dia do passo.
+- Cadência encerra sozinha por **resposta** (RESPONDEU, REUNIAO_MARCADA, NAO_INTERESSADO), **avanço no funil** além de
+  PRIMEIRO_CONTATO ou **opt-out**; tarefas pendentes são canceladas (`concluida = true` + `canceladaEm`; métricas ignoram canceladas).
+- "Gerar mensagem" só monta o texto e os links `wa.me`/`mailto` (com `encodeURIComponent`); registrar o envio é manual.
+- Criar/editar cadência só ADMIN; templates ADMIN/GESTOR. 3 templates e 1 cadência iniciais no seed (não sobrescritos).
+
+### Etapa 6 — dashboard e gamificação
+
+- Métricas 100% agregadas no banco (`$queryRaw` parametrizado) com índices dedicados. Funil conta EJs que alcançaram cada etapa
+  no período (pular etapa conta como passar por ela). Tempo por etapa usa `HistoricoStatus` (EJs sem histórico ficam de fora).
+- SDR vê só os próprios números; para ele EJs por UF e cobertura usam a carteira dele.
+- Metas semanais: padrão global + override por SDR, versionadas por semana (semanas passadas usam a meta da época).
+  "Reunião" = interação com resultado REUNIAO_MARCADA. Ranking: pontos = interações + 5 × reuniões.
+- Conquistas concedidas de forma idempotente após o commit (falha só gera log); "semana com meta batida" por job toda segunda 03:00 (SP).
+- Gráficos com Recharts 2.15.4 e tokens `--chart-*`; o pós-login continua indo para `/empresas-juniores`.
+
+### Etapa 7 — LGPD, auditoria e segurança
+
+- Ver seções **LGPD**, **Autenticação** e **Papéis**. AuditLog grava IP via AsyncLocalStorage; tela `/configuracoes/auditoria` (ADMIN).
+- Anonimizar limpa nome, e-mail, telefones, LinkedIn, cargo descritivo, mandato e motivo de opt-out; **não** limpa texto livre já
+  escrito em resumos de interação (orientação: não registrar dados pessoais em texto livre).
+- Swagger desligado em produção; `docker-compose.yml` mantém senhas padrão de dev — em produção defina todas as variáveis.
+
+### Fase 3 — marca
+
+- `brand/paleta.md` e o logo **não foram enviados**: não inventamos cores. Os tokens (`--brand-*`, `--faixa-*`, `--chart-*`)
+  estão prontos em `apps/web/src/app/globals.css` para troca.

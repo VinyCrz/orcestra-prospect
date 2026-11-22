@@ -1,6 +1,7 @@
 import { Global, Injectable, Module } from '@nestjs/common';
 import type { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { ipAtual } from './contexto-requisicao';
 
 type Cliente = Prisma.TransactionClient | PrismaService;
 
@@ -74,14 +75,17 @@ export class AuditService {
         entidade: r.entidade,
         entidadeId: r.entidadeId ?? null,
         dados: r.dados,
+        ip: ipAtual(),
       },
     });
   }
 
   registrarVarios(rs: RegistroAudit[], db: Cliente = this.prisma) {
     if (!rs.length) return Promise.resolve({ count: 0 });
+    const ip = ipAtual();
     return db.auditLog.createMany({
       data: rs.map((r) => ({
+        ip,
         usuarioId: r.usuarioId,
         acao: r.acao,
         entidade: r.entidade,

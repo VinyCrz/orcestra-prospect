@@ -37,6 +37,9 @@ services:
       context: .
       dockerfile: apps/api/Dockerfile
     restart: unless-stopped
+    # SUPRESSAO_PEPPER e demais segredos vêm do .env (env_file). Em produção a API NÃO sobe sem
+    # SUPRESSAO_PEPPER (validação em config/env.ts); não usamos `${VAR:?}` aqui para não quebrar
+    # `docker compose up postgres redis` em dev.
     env_file: .env
     environment:
       NODE_ENV: production

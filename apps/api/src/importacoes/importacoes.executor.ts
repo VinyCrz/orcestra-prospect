@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { chaveDedupe, chaveNome, regiaoDaUf } from '@orcestra/shared';
 import { Prisma, Regiao } from '@prisma/client';
 import { AuditService, diffCampos } from '../common/audit.service';
+import { MSG_SUPRIMIDO, SupressaoService } from '../lgpd/supressao.service';
 import { MASCARAS_CONTATO, snapContato } from '../contatos/contatos.service';
 import { ScoreService } from '../score/score.service';
 import { PrismaService } from '../prisma/prisma.service';
@@ -69,6 +70,7 @@ export class ImportacoesExecutor {
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
     private readonly score: ScoreService,
+    private readonly supressao: SupressaoService,
   ) {}
 
   /** EJs criadas/alteradas (ou com contato alterado) por importação; recalculadas ao final. */
@@ -451,7 +453,10 @@ export class ImportacoesExecutor {
     const { ref, erro } = resolverEjDoContato(indice, dados);
     if (!ref) return [{ campo: 'ejNome', mensagem: erro! }];
 
-    const existentes = await tx.contato.findMany({ where: { empresaJuniorId: ref.id } });
+    // anonimizados não entram no match (o nome genérico colidiria entre eles)
+    const existentes = await tx.contato.findMany({
+      where: { empresaJuniorId: ref.id, anonimizadoEm: null },
+    });
     const chave = chaveContato(dados);
     const ex = existentes.find((e) => chaveContato(e) === chave);
     if (ex) {
@@ -465,6 +470,8 @@ export class ImportacoesExecutor {
         c.ignoradas++;
         return [];
       }
+      if (await this.supressao.suprimido(patch as { email?: string; telefone?: string; whatsapp?: string }, tx))
+        return [{ mensagem: MSG_SUPRIMIDO }];
       const novo = await tx.contato.update({ where: { id: ex.id }, data: patch as Prisma.ContatoUpdateInput });
       const d = diffCampos(snapContato(ex), snapContato(novo), MASCARAS_CONTATO);
       await this.audit.registrar(
@@ -481,6 +488,7 @@ export class ImportacoesExecutor {
       c.atualizadas++;
       return [];
     }
+    if (await this.supressao.suprimido(dados, tx)) return [{ mensagem: MSG_SUPRIMIDO }];
     const criado = await tx.contato.create({
       data: {
         empresaJuniorId: ref.id,

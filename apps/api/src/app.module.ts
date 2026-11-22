@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { AuthModule } from './auth/auth.module';
 import { AuditModule } from './common/audit.service';
@@ -15,6 +15,9 @@ import { TarefasModule } from './tarefas/tarefas.module';
 import { ContatosModule } from './contatos/contatos.module';
 import { ImportacoesModule } from './importacoes/importacoes.module';
 import { ListasSalvasModule } from './listas-salvas/listas-salvas.module';
+import { contextoRequisicao } from './common/contexto-requisicao';
+import { LgpdModule } from './lgpd/lgpd.module';
+import { AuditLogsModule } from './audit-logs/audit-logs.module';
 import { validarEnv } from './config/env';
 import { EmpresasJunioresModule } from './empresas-juniores/empresas-juniores.module';
 import { FederacoesModule } from './federacoes/federacoes.module';
@@ -32,6 +35,8 @@ import { UsuariosModule } from './usuarios/usuarios.module';
     }),
     PrismaModule,
     AuditModule,
+    LgpdModule,
+    AuditLogsModule,
     FilasModule,
     AuthModule,
     HealthModule,
@@ -53,4 +58,8 @@ import { UsuariosModule } from './usuarios/usuarios.module';
     GamificacaoModule,
   ],
 })
-export class AppModule {}
+export class AppModule implements NestModule {
+  configure(consumer: MiddlewareConsumer) {
+    consumer.apply(contextoRequisicao).forRoutes('*path');
+  }
+}

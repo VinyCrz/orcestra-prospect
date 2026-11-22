@@ -35,7 +35,13 @@ function FormLogin() {
       await entrar(dados.email, dados.senha);
       router.replace(destinoSeguro(params.get('next')));
     } catch (e) {
-      setErro(e instanceof ApiError ? e.message : 'Não foi possível entrar. Tente novamente.');
+      setErro(
+        e instanceof ApiError && e.status === 429
+          ? 'Muitas tentativas de login. Aguarde alguns minutos e tente novamente.'
+          : e instanceof ApiError
+            ? e.message
+            : 'Não foi possível entrar. Tente novamente.',
+      );
     }
   });
 

@@ -16,6 +16,7 @@ import {
 } from '@orcestra/shared';
 import { SomentePapeis } from '@/components/app-shell';
 import { Campo } from '@/components/form/campo';
+import { RequisitosSenha } from '@/components/form/requisitos-senha';
 import { PageHeader } from '@/components/page-header';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -121,6 +122,7 @@ function DialogCriar({ aberto, onFechar }: { aberto: boolean; onFechar: () => vo
               autoComplete="new-password"
               {...form.register('senha')}
             />
+            <RequisitosSenha />
           </Campo>
           <Campo id="papel" label="Papel" erro={errors.papel?.message}>
             <Controller

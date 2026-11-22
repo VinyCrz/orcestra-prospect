@@ -1,6 +1,7 @@
 import { execSync } from 'node:child_process';
 import path from 'node:path';
 import { expect, request as pwRequest, test, type APIRequestContext, type Page } from '@playwright/test';
+import { sqlLimparSupressoes } from './supressao';
 
 /**
  * Fluxos da ETAPA 5: inscrever EJ na cadência seed -> tarefa na agenda -> gerar mensagem -> marcar como
@@ -26,6 +27,7 @@ function psql(sql: string) {
 function limpar(comAudit: boolean) {
   const ejs = `(select id from empresas_juniores where nome like 'QA TESTE E5 %')`;
   psql(`
+    ${sqlLimparSupressoes({ emails: ['A', 'B'].map((x) => `qa.e5.${x.toLowerCase()}.${TS}@example.com`), telefones: ['51999990000'] })}
     ${comAudit ? `delete from audit_logs where "criadoEm" >= '${INICIO}';` : ''}
     delete from tarefas where "empresaJuniorId" in ${ejs};
     delete from interacoes where "empresaJuniorId" in ${ejs};

@@ -187,6 +187,8 @@ model Usuario {
   metasSemanais         MetaSemanal[]           @relation("MetaDoUsuario")
   metasDefinidas        MetaSemanal[]           @relation("MetaDefinidaPor")
   conquistas            ConquistaUsuario[]
+  supressoesCriadas     SupressaoContato[]
+  historicoOptOut       HistoricoOptOut[]
 
   @@map("usuarios")
 }
@@ -407,6 +409,7 @@ model Contato {
   interacoes         Interacao[]
   tarefas            Tarefa[]
   inscricoesCadencia InscricaoCadencia[]
+  historicoOptOut    HistoricoOptOut[]
 
   @@index([empresaJuniorId])
   /// alertas de mandato vencendo (Etapa 3)
@@ -769,14 +772,76 @@ model AuditLog {
   entidade   String
   entidadeId String?
   dados      Json?
+  /// IP de origem da requisição (Etapa 7: a API preenche a partir de req.ip; null em jobs/seed)
   ip         String?
   criadoEm   DateTime @default(now())
 
   usuario Usuario? @relation(fields: [usuarioId], references: [id], onDelete: SetNull)
 
   @@index([entidade, entidadeId])
+  /// lista sem filtro (ORDER BY criadoEm DESC) e retenção (DELETE WHERE criadoEm < corte)
   @@index([criadoEm])
+  /// tela de AuditLog (Etapa 7): filtro por usuário/ação + período
+  @@index([usuarioId, criadoEm])
+  @@index([acao, criadoEm])
   @@map("audit_logs")
+}
+
+enum TipoSupressao {
+  EMAIL
+  TELEFONE
+}
+
+enum MotivoSupressao {
+  OPT_OUT
+  ANONIMIZACAO
+}
+
+/// Lista de supressão global (LGPD, Etapa 7): impede recontatar um titular que pediu opt-out ou foi
+/// anonimizado, mesmo que o dado volte por importação/coleta. NUNCA guarda o valor em claro.
+/// `hash` é calculado NA API: HMAC-SHA256(pepper, "<tipo>:<valor normalizado>") em hex minúsculo (64 chars),
+/// pepper em env (SUPRESSAO_PEPPER — trocar o pepper invalida a lista; não trocar sem recalcular).
+/// Normalização: EMAIL = trim + minúsculo; TELEFONE = só dígitos com DDI (ex.: 5511999998888), usado
+/// tanto para `telefone` quanto para `whatsapp` do Contato.
+/// No banco: CHECK hash ~ '^[0-9a-f]{64}$'.
+model SupressaoContato {
+  id           String          @id @default(cuid())
+  tipo         TipoSupressao
+  hash         String          @unique @db.Char(64)
+  motivo       MotivoSupressao
+  criadoPorId  String?
+  criadoEm     DateTime        @default(now())
+  atualizadoEm DateTime        @updatedAt
+
+  criadoPor Usuario? @relation(fields: [criadoPorId], references: [id], onDelete: SetNull)
+
+  @@index([criadoPorId])
+  @@map("supressoes_contato")
+}
+
+enum AcaoOptOut {
+  MARCADO
+  DESMARCADO
+}
+
+/// Histórico append-only de opt-out (Etapa 7): Contato.optOut/optOutEm/optOutMotivo guardam só o estado atual;
+/// cada marcação/desmarcação gera uma linha aqui, que não se perde ao desmarcar. Sem atualizadoEm (imutável).
+/// Ao anonimizar o contato, a API zera `motivo` (pode conter dado pessoal) e mantém as linhas.
+/// Backfill na migration etapa7: uma linha MARCADO por contato com optOut = true (criadoEm = optOutEm).
+model HistoricoOptOut {
+  id        String     @id @default(cuid())
+  contatoId String
+  acao      AcaoOptOut
+  motivo    String?
+  usuarioId String?
+  criadoEm  DateTime   @default(now())
+
+  contato Contato  @relation(fields: [contatoId], references: [id], onDelete: Cascade)
+  usuario Usuario? @relation(fields: [usuarioId], references: [id], onDelete: SetNull)
+
+  @@index([contatoId, criadoEm])
+  @@index([usuarioId])
+  @@map("historico_opt_out")
 }
 
 /// Meta semanal de interações e reuniões (Etapa 6; só ADMIN configura). Versionada por vigência para que

@@ -133,6 +133,7 @@ export interface ContatoEj {
   optOut: boolean;
   optOutEm: string | null;
   optOutMotivo: string | null;
+  anonimizadoEm?: string | null;
 }
 
 export interface ResultadoAcaoEmMassa {

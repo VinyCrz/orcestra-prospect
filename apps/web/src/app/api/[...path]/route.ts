@@ -10,6 +10,12 @@ export const dynamic = 'force-dynamic';
 const HEADERS_REPASSADOS = ['content-type', 'authorization', 'cookie', 'user-agent', 'accept'];
 const HEADERS_REMOVIDOS = ['content-encoding', 'content-length', 'transfer-encoding', 'connection'];
 
+function ipReal(req: NextRequest): string | null {
+  const encadeado = req.headers.get('x-forwarded-for');
+  const ultimo = encadeado?.split(',').pop()?.trim();
+  return ultimo || req.headers.get('x-real-ip')?.trim() || null;
+}
+
 async function proxy(req: NextRequest, ctx: { params: Promise<{ path: string[] }> }) {
   const { path } = await ctx.params;
   const base = process.env.API_INTERNAL_URL ?? 'http://localhost:3001';
@@ -19,8 +25,10 @@ async function proxy(req: NextRequest, ctx: { params: Promise<{ path: string[] }
     const v = req.headers.get(h);
     if (v) headers.set(h, v);
   }
-  const fwd = req.headers.get('x-forwarded-for');
-  if (fwd) headers.set('x-forwarded-for', fwd);
+  // Nunca repassa o X-Forwarded-For do cliente (spoofável): sobrescreve com o IP real da conexão, que é
+  // o último salto escrito pelo servidor/proxy mais próximo (a API usa trust proxy = 1 e lê esse valor).
+  const ip = ipReal(req);
+  if (ip) headers.set('x-forwarded-for', ip);
   const temCorpo = !['GET', 'HEAD'].includes(req.method);
   try {
     const res = await fetch(url, {

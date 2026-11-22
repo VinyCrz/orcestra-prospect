@@ -31,3 +31,22 @@ pnpm db:seed                     # carrega no banco (idempotente)
 ```
 
 O seed não sobrescreve campos de trabalho comercial.
+
+## Retenção e direitos do titular (LGPD, Etapa 7)
+
+Decisão: **nada é apagado automaticamente**. A retenção é revisada por pessoas.
+
+- `GET /lgpd/retencao` (ADMIN, paginado) lista contatos **candidatos**: `mandatoFim` anterior a hoje − 24 meses **e**
+  nenhuma interação nos últimos 24 meses, ainda não anonimizados. O ADMIN/GESTOR decide caso a caso e usa
+  `POST /contatos/:id/anonimizar` (`{"confirmacao":"ANONIMIZAR"}`).
+- Anonimizar limpa nome, e-mail, telefone, WhatsApp, LinkedIn, descrição do cargo, datas de mandato e motivos de
+  opt-out; mantém interações/tarefas (sem vínculo pessoal), encerra cadências, cancela tarefas pendentes e grava o
+  contato na **lista de supressão** antes de apagar os valores.
+- Lista de supressão (`supressoes_contato`): apenas hashes HMAC-SHA256 (`SUPRESSAO_PEPPER`) de e-mail e telefone.
+  Impede recriar/reimportar o contato (criação manual e importação rejeitam com "Contato suprimido
+  (opt-out/anonimizado)"). Desmarcar um opt-out (GESTOR/ADMIN) remove só as supressões por OPT_OUT; anonimização é
+  definitiva. `POST /lgpd/supressao/backfill` (ADMIN, idempotente) preenche a lista a partir dos opt-outs existentes.
+  Não troque o pepper depois de usado (invalida a lista).
+- `GET /contatos/:id/exportar` (GESTOR/ADMIN) devolve o JSON do titular (contato, EJ, interações, tarefas,
+  inscrições com passos, histórico de opt-out, auditoria) e grava `CONTATO_EXPORTADO`.
+- Histórico de opt-out (`historico_opt_out`) é append-only; marcar exige motivo.

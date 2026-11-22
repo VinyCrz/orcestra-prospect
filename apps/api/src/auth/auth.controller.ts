@@ -12,6 +12,7 @@ import {
 import type { CookieOptions, Request, Response } from 'express';
 import { ZodValidationPipe } from '../common/zod-validation.pipe';
 import { PrismaService } from '../prisma/prisma.service';
+import { LimiteAuth, LimiteLogin } from './auth-throttler.guard';
 import { AuthService, usuarioPublico, type Sessao } from './auth.service';
 import { EsqueciSenhaDto, LoginDto, RedefinirSenhaDto } from './auth.dto';
 import { REFRESH_COOKIE, type UsuarioAutenticado } from './auth.types';
@@ -43,6 +44,7 @@ export class AuthController {
   }
 
   @Public()
+  @LimiteLogin()
   @Post('login')
   @HttpCode(200)
   @ApiBody({ type: LoginDto })
@@ -62,6 +64,7 @@ export class AuthController {
   }
 
   @Public()
+  @LimiteAuth()
   @Post('refresh')
   @HttpCode(200)
   @ApiOperation({
@@ -87,6 +90,7 @@ export class AuthController {
   }
 
   @Public()
+  @LimiteAuth()
   @Post('esqueci-senha')
   @HttpCode(202)
   @ApiBody({ type: EsqueciSenhaDto })
@@ -99,6 +103,7 @@ export class AuthController {
   }
 
   @Public()
+  @LimiteAuth()
   @Post('redefinir-senha')
   @HttpCode(200)
   @ApiBody({ type: RedefinirSenhaDto })

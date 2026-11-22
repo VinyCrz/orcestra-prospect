@@ -10,6 +10,7 @@ import { toast } from 'sonner';
 import { senhaSchema } from '@orcestra/shared';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { RequisitosSenha } from '@/components/form/requisitos-senha';
 import { Campo } from '@/components/form/campo';
 import { api, ApiError } from '@/lib/api';
 
@@ -58,8 +59,9 @@ function Form() {
       <div className="grid gap-1">
         <h1 className="text-2xl font-semibold tracking-tight">Nova senha</h1>
         <p className="text-sm text-muted-foreground">
-          Escolha uma senha com pelo menos 8 caracteres.
+          Escolha uma senha forte.
         </p>
+        <RequisitosSenha />
       </div>
       <Campo id="senha" label="Nova senha" erro={formState.errors.senha?.message}>
         <Input id="senha" type="password" autoComplete="new-password" {...register('senha')} />

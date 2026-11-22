@@ -343,8 +343,13 @@ const contatoCampos = {
 const mandatoCoerente = (v: { mandatoInicio?: string | null; mandatoFim?: string | null }) =>
   !v.mandatoInicio || !v.mandatoFim || v.mandatoFim >= v.mandatoInicio;
 
+const motivoOptOutObrigatorio = (v: { optOut?: boolean; optOutMotivo?: string | null }) =>
+  v.optOut !== true || !!v.optOutMotivo?.trim();
+const MSG_MOTIVO_OPTOUT = { message: 'Informe o motivo do opt-out', path: ['optOutMotivo'] };
+
 export const criarContatoSchema = z
   .object(contatoCampos)
+  .refine(motivoOptOutObrigatorio, MSG_MOTIVO_OPTOUT)
   .refine(mandatoCoerente, { message: 'Fim do mandato anterior ao início', path: ['mandatoFim'] });
 export type CriarContatoInput = z.infer<typeof criarContatoSchema>;
 
@@ -356,8 +361,42 @@ export const atualizarContatoSchema = z
     baseLegal: z.enum(BASES_LEGAIS).optional(),
   })
   .refine((v) => Object.values(v).some((x) => x !== undefined), 'Informe ao menos um campo')
+  .refine(motivoOptOutObrigatorio, MSG_MOTIVO_OPTOUT)
   .refine(mandatoCoerente, { message: 'Fim do mandato anterior ao início', path: ['mandatoFim'] });
 export type AtualizarContatoInput = z.infer<typeof atualizarContatoSchema>;
+
+// ---------------------------------------------------------------------------------------------
+// LGPD / auditoria (Etapa 7)
+// ---------------------------------------------------------------------------------------------
+
+export const anonimizarContatoSchema = z.object({
+  confirmacao: z.literal('ANONIMIZAR', { errorMap: () => ({ message: 'Digite ANONIMIZAR para confirmar' }) }),
+});
+export type AnonimizarContatoInput = z.infer<typeof anonimizarContatoSchema>;
+
+const paginaQuery = {
+  page: z.coerce.number().int().min(1).default(1),
+  pageSize: z.coerce.number().int().min(1).max(100).default(50),
+};
+
+export const retencaoQuerySchema = z.object(paginaQuery);
+export type RetencaoQuery = z.infer<typeof retencaoQuerySchema>;
+
+const dataQuery = z
+  .string()
+  .refine((v) => !Number.isNaN(Date.parse(v)), 'Data inválida')
+  .optional();
+
+export const auditLogsQuerySchema = z.object({
+  usuarioId: z.string().min(1).optional(),
+  acao: z.string().min(1).max(80).optional(),
+  entidade: z.string().min(1).max(80).optional(),
+  entidadeId: z.string().min(1).max(80).optional(),
+  de: dataQuery,
+  ate: dataQuery,
+  ...paginaQuery,
+});
+export type AuditLogsQuery = z.infer<typeof auditLogsQuerySchema>;
 
 // ---------------------------------------------------------------------------------------------
 // Importação

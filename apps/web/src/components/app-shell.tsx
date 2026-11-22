@@ -5,6 +5,9 @@ import { usePathname, useRouter } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import {
   Briefcase,
+  ScrollText,
+  ShieldCheck,
+  Shield,
   FileText,
   Repeat,
   Building2,
@@ -63,6 +66,9 @@ const NAV: ItemNav[] = [
   },
   { href: '/configuracoes/score', label: 'Score de ICP', icon: Gauge, papeis: ['ADMIN'] },
   { href: '/configuracoes/metas', label: 'Metas do time', icon: Target, papeis: ['ADMIN'] },
+  { href: '/configuracoes/auditoria', label: 'Auditoria', icon: ScrollText, papeis: ['ADMIN'] },
+  { href: '/configuracoes/lgpd', label: 'LGPD e retenção', icon: ShieldCheck, papeis: ['ADMIN'] },
+  { href: '/politica-de-dados', label: 'Política de dados', icon: Shield },
 ];
 
 /** Badge com o total de tarefas atrasadas; atualiza a cada 60s e após mutações (invalidação). */

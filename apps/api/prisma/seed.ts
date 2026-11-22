@@ -18,7 +18,7 @@ import {
   type Regiao,
   TipoTag,
 } from '@prisma/client';
-import { chaveDedupe, chaveNome, normalizarNomeIes, type EjColetada } from '@orcestra/shared';
+import { chaveDedupe, chaveNome, normalizarNomeIes, senhaSchema, type EjColetada } from '@orcestra/shared';
 import * as argon2 from 'argon2';
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
@@ -46,7 +46,9 @@ async function seedAdmin() {
   const senha = process.env.ADMIN_SENHA;
   const nome = process.env.ADMIN_NOME?.trim() || 'Administrador';
   if (!email || !senha) throw new Error('Defina ADMIN_EMAIL e ADMIN_SENHA no .env');
-  if (senha.length < 8) throw new Error('ADMIN_SENHA deve ter pelo menos 8 caracteres');
+  const forca = senhaSchema.safeParse(senha);
+  if (!forca.success)
+    throw new Error(`ADMIN_SENHA fraca: ${forca.error.issues.map((i) => i.message).join('; ')}`);
   const existe = await prisma.usuario.findUnique({ where: { email } });
   if (existe) {
     console.log(`• ADMIN ${email} já existe — mantido.`);

@@ -4,6 +4,7 @@ import { JwtService } from '@nestjs/jwt';
 import type { Usuario } from '@prisma/client';
 import { AuthService, sha256 } from '../src/auth/auth.service';
 import { SenhaService } from '../src/auth/senha.service';
+import type { AuditService } from '../src/common/audit.service';
 import type { PrismaService } from '../src/prisma/prisma.service';
 
 const SEGREDO = 'segredo-de-teste-com-tamanho-suficiente';
@@ -35,11 +36,12 @@ function montar() {
     tokenRedefinicaoSenha: { create: jest.fn(), findUnique: jest.fn(), update: jest.fn() },
     $transaction: jest.fn(async (ops: unknown[]) => ops),
   };
+  const audit = { registrar: jest.fn().mockResolvedValue(undefined) };
   const senhas = new SenhaService();
   const config = new ConfigService({ REFRESH_TOKEN_TTL_DIAS: 7, WEB_URL: 'http://localhost:3000' });
   const jwt = new JwtService({ secret: SEGREDO, signOptions: { expiresIn: '15m' } });
-  const service = new AuthService(prisma as unknown as PrismaService, jwt, senhas, config);
-  return { prisma, senhas, jwt, service };
+  const service = new AuthService(prisma as unknown as PrismaService, jwt, senhas, config, audit as unknown as AuditService);
+  return { prisma, senhas, jwt, service, audit };
 }
 
 describe('AuthService — login', () => {

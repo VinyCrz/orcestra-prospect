@@ -1,6 +1,7 @@
 import { ForbiddenException } from '@nestjs/common';
 import { StatusService } from '../src/funil/status.service';
 import type { AuditService } from '../src/common/audit.service';
+import type { SupressaoService } from '../src/lgpd/supressao.service';
 import { ContatosService } from '../src/contatos/contatos.service';
 import { EmpresasJunioresService } from '../src/empresas-juniores/empresas-juniores.service';
 import { podeEditarEj } from '../src/empresas-juniores/permissoes';
@@ -51,7 +52,7 @@ describe('permissão de edição por carteira', () => {
       empresaJunior: { findUnique: jest.fn().mockResolvedValue({ id: 'ej1', responsavelId: 'outro' }) },
       contato: { findUnique: jest.fn().mockResolvedValue({ id: 'c1', empresaJuniorId: 'ej1' }) },
     } as unknown as PrismaService;
-    const svc = new ContatosService(prisma, {} as AuditService, score);
+    const svc = new ContatosService(prisma, {} as AuditService, score, {} as SupressaoService);
     await expect(
       svc.criar('ej1', { nome: 'Fulano', cargo: 'OUTRO', baseLegal: 'LEGITIMO_INTERESSE_B2B' }, sdr),
     ).rejects.toBeInstanceOf(ForbiddenException);

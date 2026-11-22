@@ -13,7 +13,20 @@ const envSchema = z.object({
     .default('false')
     .transform((v) => v === 'true'),
   WEB_URL: z.string().url().default('http://localhost:3000'),
-  CORS_ORIGINS: z.string().default('http://localhost:3000'),
+  /** Vazio (padrão) = sem CORS: o navegador só fala com a API via proxy do web (mesma origem). */
+  CORS_ORIGINS: z.string().default(''),
+  /** Segredo (pepper) do HMAC da lista de supressão LGPD. Obrigatório em produção; não trocar depois. */
+  SUPRESSAO_PEPPER: z.string().optional(),
+  RATE_LIMIT_LOGIN_POR_MIN: z.coerce.number().int().min(1).default(5),
+  RATE_LIMIT_AUTH_POR_MIN: z.coerce.number().int().min(1).default(10),
+}).superRefine((v, ctx) => {
+  if (v.NODE_ENV === 'production' && (v.SUPRESSAO_PEPPER ?? '').length < 32) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['SUPRESSAO_PEPPER'],
+      message: 'obrigatório em produção, com pelo menos 32 caracteres (openssl rand -hex 32)',
+    });
+  }
 });
 
 export type Env = z.infer<typeof envSchema>;

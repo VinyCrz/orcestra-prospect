@@ -1,4 +1,5 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post } from '@nestjs/common';
+import { Body, Controller, Delete, Get, HttpCode, Param, Patch, Post, Res } from '@nestjs/common';
+import type { Response } from 'express';
 import {
   ApiBearerAuth,
   ApiBody,
@@ -9,7 +10,9 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import {
+  anonimizarContatoSchema,
   atualizarContatoSchema,
+  type AnonimizarContatoInput,
   CARGOS_CONTATO,
   BASES_LEGAIS,
   criarContatoSchema,
@@ -17,6 +20,7 @@ import {
   type CriarContatoInput,
 } from '@orcestra/shared';
 import type { UsuarioAutenticado } from '../auth/auth.types';
+import { Papeis } from '../auth/decorators/papeis.decorator';
 import { UsuarioAtual } from '../auth/decorators/usuario-atual.decorator';
 import { ZodValidationPipe } from '../common/zod-validation.pipe';
 import { ContatosService } from './contatos.service';
@@ -80,8 +84,35 @@ export class ContatosController {
   }
 
   @Delete('contatos/:id')
-  @ApiOperation({ summary: 'Exclui contato. Mesma regra de permissão da EJ.' })
+  @Papeis('ADMIN', 'GESTOR')
+  @ApiOperation({ summary: 'Exclui contato (somente GESTOR/ADMIN). Um opt-out/anonimização permanece na lista de supressão.' })
   excluir(@Param('id') id: string, @UsuarioAtual() u: UsuarioAutenticado) {
     return this.service.excluir(id, u);
+  }
+
+  @Get('contatos/:id/exportar')
+  @Papeis('ADMIN', 'GESTOR')
+  @ApiOperation({ summary: 'Direito de acesso (LGPD): exporta todos os dados do contato em JSON (download). GESTOR/ADMIN.' })
+  async exportar(
+    @Param('id') id: string,
+    @UsuarioAtual() u: UsuarioAutenticado,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const dados = await this.service.exportar(id, u);
+    res.setHeader('Content-Disposition', `attachment; filename="contato-${id}.json"`);
+    return dados;
+  }
+
+  @Post('contatos/:id/anonimizar')
+  @HttpCode(200)
+  @Papeis('ADMIN', 'GESTOR')
+  @ApiBody({ schema: { properties: { confirmacao: { type: 'string', example: 'ANONIMIZAR' } } } })
+  @ApiOperation({ summary: 'Direito de eliminação (LGPD): anonimiza o contato e o inclui na lista de supressão. GESTOR/ADMIN.' })
+  anonimizar(
+    @Param('id') id: string,
+    @Body(new ZodValidationPipe(anonimizarContatoSchema)) _body: AnonimizarContatoInput,
+    @UsuarioAtual() u: UsuarioAutenticado,
+  ) {
+    return this.service.anonimizar(id, u);
   }
 }

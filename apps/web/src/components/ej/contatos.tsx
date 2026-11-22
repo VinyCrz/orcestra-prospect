@@ -2,7 +2,19 @@
 import { useState } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Ban, Loader2, Mail, MessageCircle, Pencil, Plus, Star, Trash2 } from 'lucide-react';
+import {
+  Ban,
+  Download,
+  EyeOff,
+  Linkedin,
+  Loader2,
+  Mail,
+  MessageCircle,
+  Pencil,
+  Plus,
+  Star,
+  Trash2,
+} from 'lucide-react';
 import { toast } from 'sonner';
 import {
   BASES_LEGAIS,
@@ -35,7 +47,8 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
-import { api, ApiError } from '@/lib/api';
+import { api, ApiError, baixarArquivo } from '@/lib/api';
+import { useAuth } from '@/lib/auth';
 import type { ContatoEj } from '@/lib/tipos';
 
 const BASE_LEGAL_LABEL: Record<BaseLegal, string> = {
@@ -111,6 +124,14 @@ export function SecaoContatos({ ejId, podeEditar }: { ejId: string; podeEditar: 
   const qc = useQueryClient();
   const [edicao, setEdicao] = useState<ContatoEj | 'novo' | null>(null);
   const [exclusao, setExclusao] = useState<ContatoEj | null>(null);
+  const [anonimizando, setAnonimizando] = useState<ContatoEj | null>(null);
+  const { temPapel } = useAuth();
+  const gestor = temPapel('ADMIN', 'GESTOR');
+  const exportar = useMutation({
+    mutationFn: (c: ContatoEj) => baixarArquivo(`/contatos/${c.id}/exportar`, `contato-${c.id}.json`),
+    onSuccess: () => toast.success('Dados exportados'),
+    onError: (e) => toast.error(e instanceof ApiError ? e.message : 'Erro ao exportar dados'),
+  });
   const q = useQuery({
     queryKey: ['contatos', ejId],
     queryFn: () => api<ContatoEj[]>(`/empresas-juniores/${ejId}/contatos`),
@@ -171,8 +192,28 @@ export function SecaoContatos({ ejId, podeEditar }: { ejId: string; podeEditar: 
                     <Ban /> Opt-out
                   </Badge>
                 )}
-                {podeEditar && (
-                  <div className="ml-auto flex gap-1">
+                {c.anonimizadoEm && (
+                  <Badge variant="outline">
+                    <EyeOff /> Anonimizado
+                  </Badge>
+                )}
+                <div className="ml-auto flex flex-wrap gap-1">
+                  {gestor && !c.anonimizadoEm && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      disabled={exportar.isPending}
+                      onClick={() => exportar.mutate(c)}
+                    >
+                      <Download /> Exportar dados (JSON)
+                    </Button>
+                  )}
+                  {gestor && !c.anonimizadoEm && (
+                    <Button size="sm" variant="outline" onClick={() => setAnonimizando(c)}>
+                      <EyeOff /> Anonimizar
+                    </Button>
+                  )}
+                  {podeEditar && !c.anonimizadoEm && (
                     <Button
                       size="icon"
                       variant="ghost"
@@ -181,6 +222,8 @@ export function SecaoContatos({ ejId, podeEditar }: { ejId: string; podeEditar: 
                     >
                       <Pencil />
                     </Button>
+                  )}
+                  {gestor && (
                     <Button
                       size="icon"
                       variant="ghost"
@@ -189,8 +232,8 @@ export function SecaoContatos({ ejId, podeEditar }: { ejId: string; podeEditar: 
                     >
                       <Trash2 />
                     </Button>
-                  </div>
-                )}
+                  )}
+                </div>
               </div>
               {c.optOut && (
                 <p className="rounded-md bg-destructive/10 p-2 text-destructive">
@@ -199,47 +242,40 @@ export function SecaoContatos({ ejId, podeEditar }: { ejId: string; podeEditar: 
                   {c.optOutMotivo ? `: ${c.optOutMotivo}` : '.'} Não envie mensagens.
                 </p>
               )}
-              <div className="flex flex-wrap gap-x-4 gap-y-1">
-                {c.email &&
-                  (c.optOut ? (
-                    <span className="inline-flex items-center gap-1 text-muted-foreground line-through">
-                      <Mail className="size-3.5" /> {c.email}
-                    </span>
-                  ) : (
-                    <a
-                      href={`mailto:${c.email}`}
-                      className="inline-flex items-center gap-1 text-primary hover:underline"
-                    >
-                      <Mail className="size-3.5" /> {c.email}
-                    </a>
-                  ))}
-                {c.whatsapp &&
-                  (c.optOut ? (
-                    <span className="inline-flex items-center gap-1 text-muted-foreground line-through">
-                      <MessageCircle className="size-3.5" /> {c.whatsapp}
-                    </span>
-                  ) : (
-                    <a
+              {c.anonimizadoEm ? (
+                <p className="text-muted-foreground">
+                  Dados pessoais removidos em {dataBr(c.anonimizadoEm)}. Sem edição nem contato.
+                </p>
+              ) : (
+                <div className="flex flex-wrap gap-x-4 gap-y-1">
+                  {c.email && (
+                    <LinkContato bloqueado={c.optOut} href={`mailto:${c.email}`} icone={<Mail className="size-3.5" />}>
+                      {c.email}
+                    </LinkContato>
+                  )}
+                  {c.whatsapp && (
+                    <LinkContato
+                      bloqueado={c.optOut}
                       href={linkWhatsapp(c.whatsapp)}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1 text-primary hover:underline"
+                      externo
+                      icone={<MessageCircle className="size-3.5" />}
                     >
-                      <MessageCircle className="size-3.5" /> {c.whatsapp}
-                    </a>
-                  ))}
-                {c.telefone && <span className="text-muted-foreground">Tel.: {c.telefone}</span>}
-                {c.linkedin && (
-                  <a
-                    href={c.linkedin}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-primary hover:underline"
-                  >
-                    LinkedIn
-                  </a>
-                )}
-              </div>
+                      {c.whatsapp}
+                    </LinkContato>
+                  )}
+                  {c.telefone && <span className="text-muted-foreground">Tel.: {c.telefone}</span>}
+                  {c.linkedin && (
+                    <LinkContato
+                      bloqueado={c.optOut}
+                      href={c.linkedin}
+                      externo
+                      icone={<Linkedin className="size-3.5" />}
+                    >
+                      LinkedIn
+                    </LinkContato>
+                  )}
+                </div>
+              )}
               <p className="text-xs text-muted-foreground">
                 Mandato: {dataBr(c.mandatoInicio) ?? '—'} a {dataBr(c.mandatoFim) ?? '—'} · Base
                 legal: {BASE_LEGAL_LABEL[c.baseLegal]} · Fonte: {c.fonte ?? 'não informada'}
@@ -250,6 +286,11 @@ export function SecaoContatos({ ejId, podeEditar }: { ejId: string; podeEditar: 
       </CardContent>
 
       <DialogContato ejId={ejId} edicao={edicao} onFechar={() => setEdicao(null)} />
+      <DialogAnonimizar
+        contato={anonimizando}
+        onFechar={() => setAnonimizando(null)}
+        aoConcluir={() => void qc.invalidateQueries({ queryKey: ['contatos', ejId] })}
+      />
 
       <Dialog open={!!exclusao} onOpenChange={(o) => !o && setExclusao(null)}>
         <DialogContent>
@@ -278,6 +319,106 @@ export function SecaoContatos({ ejId, podeEditar }: { ejId: string; podeEditar: 
   );
 }
 
+function LinkContato({
+  bloqueado,
+  href,
+  externo,
+  icone,
+  children,
+}: {
+  bloqueado: boolean;
+  href: string;
+  externo?: boolean;
+  icone: React.ReactNode;
+  children: React.ReactNode;
+}) {
+  if (bloqueado)
+    return (
+      <span
+        className="inline-flex items-center gap-1 text-muted-foreground line-through"
+        title="Link desativado: contato em opt-out"
+      >
+        {icone} {children}
+      </span>
+    );
+  return (
+    <a
+      href={href}
+      {...(externo ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
+      className="inline-flex items-center gap-1 text-primary hover:underline"
+    >
+      {icone} {children}
+    </a>
+  );
+}
+
+/** Anonimização definitiva: exige digitar ANONIMIZAR (a API valida de novo). */
+export function DialogAnonimizar({
+  contato,
+  onFechar,
+  aoConcluir,
+}: {
+  contato: { id: string; nome: string } | null;
+  onFechar: () => void;
+  aoConcluir: () => void;
+}) {
+  const [texto, setTexto] = useState('');
+  const m = useMutation({
+    mutationFn: (id: string) =>
+      api(`/contatos/${id}/anonimizar`, { method: 'POST', json: { confirmacao: 'ANONIMIZAR' } }),
+    onSuccess: () => {
+      toast.success('Contato anonimizado');
+      aoConcluir();
+      setTexto('');
+      onFechar();
+    },
+    onError: (e) => toast.error(e instanceof ApiError ? e.message : 'Erro ao anonimizar'),
+  });
+  return (
+    <Dialog
+      open={!!contato}
+      onOpenChange={(o) => {
+        if (!o) {
+          setTexto('');
+          onFechar();
+        }
+      }}
+    >
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Anonimizar contato</DialogTitle>
+          <DialogDescription>
+            Remove definitivamente nome, e-mail, telefone, WhatsApp e LinkedIn de {contato?.nome}.
+            Cadências são encerradas, tarefas pendentes canceladas e o contato entra na lista de
+            supressão. Esta ação não pode ser desfeita.
+          </DialogDescription>
+        </DialogHeader>
+        <Campo id="anon-confirmacao" label="Digite ANONIMIZAR para confirmar">
+          <Input
+            id="anon-confirmacao"
+            autoComplete="off"
+            value={texto}
+            onChange={(e) => setTexto(e.target.value)}
+          />
+        </Campo>
+        <DialogFooter>
+          <Button variant="outline" onClick={onFechar}>
+            Cancelar
+          </Button>
+          <Button
+            variant="destructive"
+            disabled={texto !== 'ANONIMIZAR' || m.isPending}
+            onClick={() => contato && m.mutate(contato.id)}
+          >
+            {m.isPending && <Loader2 className="animate-spin" />}
+            Anonimizar definitivamente
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 function DialogContato({
   ejId,
   edicao,
@@ -290,6 +431,9 @@ function DialogContato({
   const qc = useQueryClient();
   const contato = edicao && edicao !== 'novo' ? edicao : null;
   const [erros, setErros] = useState<Record<string, string>>({});
+  const [erroApi, setErroApi] = useState<string>();
+  const { temPapel } = useAuth();
+  const podeDesmarcar = temPapel('ADMIN', 'GESTOR');
   const form = useForm<Valores>({
     values: contato ? deContato(contato) : vazio,
   });
@@ -306,10 +450,17 @@ function DialogContato({
       void qc.invalidateQueries({ queryKey: ['contatos', ejId] });
       onFechar();
     },
-    onError: (e) => toast.error(e instanceof ApiError ? e.message : 'Erro ao salvar contato'),
+    onError: (e) => {
+      const msg = e instanceof ApiError ? e.message : 'Erro ao salvar contato';
+      if (e instanceof ApiError && e.status === 422) setErroApi(msg);
+      else toast.error(msg);
+    },
   });
 
   function enviar(v: Valores) {
+    setErroApi(undefined);
+    if (v.optOut && !v.optOutMotivo.trim())
+      return setErros({ optOutMotivo: 'Informe o motivo do opt-out' });
     const r = criarContatoSchema.safeParse(v);
     if (!r.success) {
       const e: Record<string, string> = {};
@@ -332,6 +483,7 @@ function DialogContato({
       onOpenChange={(o) => {
         if (!o) {
           setErros({});
+          setErroApi(undefined);
           onFechar();
         }
       }}
@@ -344,6 +496,15 @@ function DialogContato({
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={form.handleSubmit(enviar)} className="grid gap-4 sm:grid-cols-2" noValidate>
+          {erroApi && (
+            <p
+              className="rounded-md bg-destructive/10 p-2 text-sm text-destructive sm:col-span-2"
+              role="alert"
+              data-testid="erro-supressao"
+            >
+              {erroApi}
+            </p>
+          )}
           <div className="sm:col-span-2">{t('nome', 'Nome *')}</div>
           <Campo id="c-cargo" label="Cargo" erro={erros.cargo}>
             <Controller
@@ -399,10 +560,34 @@ function DialogContato({
           </div>
           <div className="grid gap-3 rounded-md border border-destructive/30 p-3 sm:col-span-2">
             <div className="flex items-center gap-2">
-              <Checkbox id="c-optOut" {...form.register('optOut')} />
+              <Controller
+                control={form.control}
+                name="optOut"
+                render={({ field }) => (
+                  <Checkbox
+                    id="c-optOut"
+                    checked={field.value}
+                    onChange={(e) => field.onChange(e.target.checked)}
+                    disabled={!!contato?.optOut && !podeDesmarcar}
+                  />
+                )}
+              />
               <Label htmlFor="c-optOut">Opt-out (não deve ser contatado)</Label>
             </div>
-            {optOut && t('optOutMotivo', 'Motivo do opt-out')}
+            {contato?.optOut && !podeDesmarcar && (
+              <p className="text-xs text-muted-foreground">
+                Só Gestor ou Administrador podem desmarcar um opt-out.
+              </p>
+            )}
+            {optOut && (
+              <>
+                <p className="text-sm text-muted-foreground">
+                  Ao salvar, as cadências deste contato são encerradas e suas tarefas pendentes são
+                  canceladas; ele fica bloqueado em toda a plataforma.
+                </p>
+                {t('optOutMotivo', 'Motivo do opt-out *')}
+              </>
+            )}
           </div>
           <DialogFooter className="sm:col-span-2">
             <Button type="button" variant="outline" onClick={onFechar}>

@@ -2,6 +2,7 @@ import { execSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { expect, request as pwRequest, test, type APIRequestContext, type Page } from '@playwright/test';
+import { sqlLimparSupressoes } from './supressao';
 
 /**
  * Fluxos da ETAPA 2: formulário de EJ, contatos (opt-out), ações em massa, listas salvas,
@@ -31,6 +32,7 @@ function psql(sql: string) {
 
 function limpar(comAudit: boolean) {
   psql(`
+    ${sqlLimparSupressoes({ emails: ['contato.qa@example.test'], telefones: ['51999990000'] })}
     ${comAudit ? `delete from audit_logs where "criadoEm" >= '${INICIO}';` : ''}
     delete from empresas_juniores where nome like 'QA TESTE %';
     delete from importacoes where "arquivoNome" like 'qa-teste-%';

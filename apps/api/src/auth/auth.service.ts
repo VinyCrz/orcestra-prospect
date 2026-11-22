@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import type { Usuario } from '@prisma/client';
 import { createHash, randomBytes } from 'node:crypto';
+import { AuditService, mascararEmail } from '../common/audit.service';
 import { PrismaService } from '../prisma/prisma.service';
 import type { JwtPayload } from './auth.types';
 import { SenhaService } from './senha.service';
@@ -37,6 +38,7 @@ export class AuthService {
     private readonly jwt: JwtService,
     private readonly senhas: SenhaService,
     private readonly config: ConfigService,
+    private readonly audit: AuditService,
   ) {}
 
   async login(email: string, senha: string, userAgent?: string): Promise<Sessao> {
@@ -46,22 +48,38 @@ export class AuthService {
       senha,
     );
     if (!usuario || !ok) {
-      this.logger.warn(
-        `Login recusado para "${email}": ${!usuario ? 'e-mail não cadastrado' : 'senha incorreta'}`,
-      );
+      const motivo = !usuario ? 'email_nao_cadastrado' : 'senha_incorreta';
+      this.logger.warn(`Login recusado para "${mascararEmail(email)}": ${motivo}`);
+      await this.auditarLoginFalho(usuario, email, motivo);
       throw new UnauthorizedException('E-mail ou senha inválidos');
     }
     if (!usuario.ativo) {
-      this.logger.warn(`Login recusado para "${email}": usuário desativado`);
-    }
-    if (!usuario.ativo)
+      this.logger.warn(`Login recusado para "${mascararEmail(email)}": usuário desativado`);
+      await this.auditarLoginFalho(usuario, email, 'usuario_desativado');
       throw new UnauthorizedException('Usuário desativado. Fale com um administrador.');
-    this.logger.log(`Login de ${usuario.email}`);
+    }
+    this.logger.log(`Login de ${mascararEmail(usuario.email)}`);
     const atualizado = await this.prisma.usuario.update({
       where: { id: usuario.id },
       data: { ultimoLoginEm: new Date() },
     });
+    await this.audit.registrar({
+      usuarioId: usuario.id,
+      acao: 'LOGIN_OK',
+      entidade: 'Usuario',
+      entidadeId: usuario.id,
+    });
     return this.emitirSessao(atualizado, userAgent);
+  }
+
+  private auditarLoginFalho(usuario: Usuario | null, email: string, motivo: string) {
+    return this.audit.registrar({
+      usuarioId: usuario?.id ?? null,
+      acao: 'LOGIN_FALHOU',
+      entidade: 'Usuario',
+      entidadeId: usuario?.id ?? null,
+      dados: { email: mascararEmail(email), motivo },
+    });
   }
 
   /** Troca um refresh token válido por uma nova sessão (rotação). Reuso de token revogado derruba todas as sessões. */
@@ -118,7 +136,11 @@ export class AuthService {
       },
     });
     const link = `${this.config.get('WEB_URL')}/redefinir-senha?token=${token}`;
-    this.logger.log(`[esqueci-minha-senha] Link de redefinição para ${usuario.email}: ${link}`);
+    if (this.config.get('NODE_ENV') !== 'production') {
+      this.logger.log(`[esqueci-minha-senha] Link de redefinição para ${usuario.email}: ${link}`);
+    } else {
+      this.logger.log(`Redefinição de senha solicitada para ${mascararEmail(usuario.email)}`);
+    }
   }
 
   async redefinirSenha(token: string, novaSenha: string): Promise<void> {

@@ -3,8 +3,11 @@ import { PAPEIS } from './enums';
 
 export const senhaSchema = z
   .string()
-  .min(8, 'A senha deve ter pelo menos 8 caracteres')
-  .max(128, 'A senha é muito longa');
+  .min(10, 'A senha deve ter pelo menos 10 caracteres')
+  .max(128, 'A senha é muito longa')
+  .regex(/\p{L}/u, 'A senha deve conter ao menos uma letra')
+  .regex(/\d/, 'A senha deve conter ao menos um número')
+  .regex(/[^\p{L}\d\s]/u, 'A senha deve conter ao menos um símbolo (ex.: ! @ # $)');
 
 export const loginSchema = z.object({
   email: z.string().trim().toLowerCase().email('Informe um e-mail válido'),
