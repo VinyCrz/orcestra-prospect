@@ -10,14 +10,19 @@ function ChartContainer({
   config,
   className,
   children,
+  style: estiloExtra,
   ...props
 }: React.ComponentProps<'div'> & {
   config: ChartConfig;
   children: React.ComponentProps<typeof Recharts.ResponsiveContainer>['children'];
 }) {
-  const style = Object.fromEntries(
-    Object.entries(config).map(([k, v], i) => [`--color-${k}`, v.color ?? `var(--chart-${(i % 6) + 1})`]),
-  ) as React.CSSProperties;
+  // Mescla com o style do chamador (ex.: height): antes ele sobrescrevia as variáveis --color-* e as barras saíam pretas.
+  const style = {
+    ...estiloExtra,
+    ...Object.fromEntries(
+      Object.entries(config).map(([k, v], i) => [`--color-${k}`, v.color ?? `var(--chart-${(i % 6) + 1})`]),
+    ),
+  } as React.CSSProperties;
   return (
     <div
       data-slot="chart"
