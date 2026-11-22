@@ -29,9 +29,10 @@ test('login → lista de Empresas Juniores → filtro por UF', async ({ page }) 
   expect(ufs.length).toBeGreaterThan(0);
   expect(new Set(ufs)).toEqual(new Set([UF]));
 
-  // Abre o detalhe de uma EJ filtrada e confere a fonte
+  // Abre o detalhe de uma EJ filtrada: mostra os canais e NÃO mostra a fonte dos dados (decisão do usuário)
   await page.getByTestId('linha-ej').first().getByRole('link').click();
-  await expect(page.getByText('Fonte dos dados')).toBeVisible();
+  await expect(page.getByText('Canais institucionais')).toBeVisible();
+  await expect(page.getByText('Fonte dos dados')).toHaveCount(0);
 });
 
 test('painel de filtros aplica filtros na URL e itens de menu respeitam o papel', async ({ page }) => {

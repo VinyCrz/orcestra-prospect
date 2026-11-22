@@ -338,3 +338,15 @@ as cores da Orce'estra. Modo claro/escuro (segue o sistema, com alternância no 
 
 - `brand/paleta.md` e o logo **não foram enviados**: não inventamos cores. Os tokens (`--brand-*`, `--faixa-*`, `--chart-*`)
   estão prontos em `apps/web/src/app/globals.css` para troca.
+
+### Ajustes pós-etapa 7 (pedido do usuário, 22/11/2026)
+
+- **Só EJs com alguma forma de contato aparecem no sistema.** As demais (1.351 de 1.515 na base atual) ficam **ocultas, não
+  apagadas**. A coluna `empresas_juniores.temContato` é mantida por triggers do PostgreSQL (migration `ej_tem_contato`):
+  true se a EJ tem site, Instagram, LinkedIn, Facebook, e-mail ou telefone institucional, ou um contato fora de opt-out/anonimização
+  com e-mail, telefone, WhatsApp ou LinkedIn. Lista, CSV, filtros, ações em massa, carteira, kanban, prioridades, cadências, alertas
+  e métricas de base do dashboard usam só EJs visíveis (`EJ_VISIVEL` em `apps/api/src/empresas-juniores/visibilidade.ts`);
+  métricas de atividade do SDR (interações, ranking, metas) contam tudo. O detalhe por id continua acessível e mostra o aviso
+  "EJ oculta"; cadastrar um canal ou contato faz a EJ reaparecer sozinha. A deduplicação (importação, cadastro manual, seed)
+  considera também as ocultas, para não recriá-las.
+- **A página da EJ não mostra mais a fonte dos dados** (`fonteUrl`, `fontes`, `coletadoEm` continuam no banco para rastreabilidade/LGPD).

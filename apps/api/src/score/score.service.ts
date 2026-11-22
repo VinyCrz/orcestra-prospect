@@ -15,6 +15,7 @@ import { Prisma } from '@prisma/client';
 import type { Queue } from 'bullmq';
 import type { UsuarioAutenticado } from '../auth/auth.types';
 import { AuditService } from '../common/audit.service';
+import { EJ_VISIVEL } from '../empresas-juniores/visibilidade';
 import { FILAS } from '../filas/filas.module';
 import { PrismaService } from '../prisma/prisma.service';
 
@@ -322,6 +323,7 @@ export class ScoreService implements OnApplicationBootstrap {
     const responsavelId = usuario.papel === 'SDR' ? usuario.id : (q.responsavelId ?? usuario.id);
     const itens = await this.prisma.empresaJunior.findMany({
       where: {
+        ...EJ_VISIVEL,
         responsavelId,
         statusProspeccao: { in: q.incluirPesquisadas ? ['NAO_TRABALHADA', 'PESQUISADA'] : ['NAO_TRABALHADA'] },
       },

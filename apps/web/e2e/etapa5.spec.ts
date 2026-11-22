@@ -58,7 +58,7 @@ test.beforeAll(async () => {
   auth = { Authorization: `Bearer ${((await r.json()) as { accessToken: string }).accessToken}` };
   for (const s of ['A', 'B']) {
     const nome = `${M} ${s}`;
-    const c = await admin.post('/api/empresas-juniores', { data: { nome, uf: 'RS', cidade: 'Porto Alegre' }, headers: auth });
+    const c = await admin.post('/api/empresas-juniores', { data: { nome, uf: 'RS', cidade: 'Porto Alegre', site: 'https://example.com' }, headers: auth });
     expect(c.ok()).toBeTruthy();
     const id = ((await c.json()) as { id: string }).id;
     const ct = await admin.post(`/api/empresas-juniores/${id}/contatos`, {

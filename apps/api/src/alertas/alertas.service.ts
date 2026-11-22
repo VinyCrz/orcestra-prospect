@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { OrigemTarefa, Prisma } from '@prisma/client';
 import { dataColunaHoje, inicioDoDiaSP, somarDias } from '../common/fuso';
+import { EJ_VISIVEL } from '../empresas-juniores/visibilidade';
 import { PrismaService } from '../prisma/prisma.service';
 
 export const JANELA_MANDATO_DIAS = 30;
@@ -51,6 +52,7 @@ export class AlertasService {
         mandatoFim: { gte: hoje, lte: somarDias(hoje, JANELA_MANDATO_DIAS) },
         optOut: false,
         anonimizadoEm: null,
+        empresaJunior: EJ_VISIVEL,
       },
       select: {
         id: true,
@@ -88,7 +90,7 @@ export class AlertasService {
   private async alertarNutricao(agora: Date): Promise<ResultadoAlerta> {
     const limite = somarDias(dataColunaHoje(agora), JANELA_NUTRICAO_DIAS);
     const ejs = await this.prisma.empresaJunior.findMany({
-      where: { statusProspeccao: 'NUTRICAO', dataRetornoNutricao: { not: null, lte: limite } }, // inclui atrasadas
+      where: { ...EJ_VISIVEL, statusProspeccao: 'NUTRICAO', dataRetornoNutricao: { not: null, lte: limite } }, // inclui atrasadas
       select: {
         id: true,
         nome: true,

@@ -6,35 +6,13 @@ import {
   type FiltrosEj,
 } from '@orcestra/shared';
 import type { Prisma } from '@prisma/client';
-
-/**
- * EJ com alguma forma de contato: canal institucional (site, Instagram, LinkedIn, Facebook, e-mail ou telefone)
- * ou um contato cadastrado que não esteja em opt-out/anonimizado e tenha e-mail, telefone, WhatsApp ou LinkedIn.
- */
-const naoVazio = { not: null } as const;
-const COM_CONTATO: Prisma.EmpresaJuniorWhereInput = {
-  OR: [
-    { site: naoVazio },
-    { instagram: naoVazio },
-    { linkedin: naoVazio },
-    { facebook: naoVazio },
-    { emailInstitucional: naoVazio },
-    { telefoneInstitucional: naoVazio },
-    {
-      contatos: {
-        some: {
-          optOut: false,
-          anonimizadoEm: null,
-          OR: [{ email: naoVazio }, { telefone: naoVazio }, { whatsapp: naoVazio }, { linkedin: naoVazio }],
-        },
-      },
-    },
-  ],
-};
+import { EJ_VISIVEL } from './visibilidade';
 
 /** Converte os filtros combináveis (AND entre filtros, OR dentro de cada filtro multi) em `where` do Prisma. */
 export function montarWhere(f: FiltrosEj, usuarioId: string): Prisma.EmpresaJuniorWhereInput {
-  const and: Prisma.EmpresaJuniorWhereInput[] = [];
+  // Só EJs visíveis (com forma de contato). `comContato` segue aceito por compatibilidade: true é redundante,
+  // false não casa com nenhuma EJ visível (resultado vazio).
+  const and: Prisma.EmpresaJuniorWhereInput[] = [EJ_VISIVEL];
 
   if (f.busca) {
     const chave = chaveNome(f.busca);
@@ -56,7 +34,7 @@ export function montarWhere(f: FiltrosEj, usuarioId: string): Prisma.EmpresaJuni
   if (f.membrosMin !== undefined) and.push({ membrosEstimados: { gte: f.membrosMin } });
   if (f.membrosMax !== undefined) and.push({ membrosEstimados: { lte: f.membrosMax } });
   if (f.federada !== undefined) and.push({ federada: f.federada });
-  if (f.comContato !== undefined) and.push(f.comContato ? COM_CONTATO : { NOT: COM_CONTATO });
+  if (f.comContato === false) and.push({ temContato: false });
   if (f.status?.length) and.push({ statusProspeccao: { in: f.status } });
   if (f.scoreMin !== undefined) and.push({ scoreIcp: { gte: f.scoreMin } });
   if (f.scoreMax !== undefined) and.push({ scoreIcp: { lte: f.scoreMax } });
@@ -65,7 +43,7 @@ export function montarWhere(f: FiltrosEj, usuarioId: string): Prisma.EmpresaJuni
     const ids = f.responsavelId.map((v) => (v === FILTRO_EU ? usuarioId : v));
     and.push(comNulo('responsavelId', ids, FILTRO_NENHUM));
   }
-  return and.length ? { AND: and } : {};
+  return { AND: and };
 }
 
 function comNulo(

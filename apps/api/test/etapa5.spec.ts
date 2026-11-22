@@ -39,10 +39,17 @@ function montarInscricao(over: { ejs?: unknown[]; ativas?: unknown[]; contato?: 
   return { tx, prisma, svc: new CadenciasService(prisma as unknown as PrismaService, audit) };
 }
 const ej = (id: string, extra: object = {}) => ({
-  id, nome: `EJ ${id}`, responsavelId: 'sdr1', statusProspeccao: 'PESQUISADA', ...extra,
+  id, nome: `EJ ${id}`, responsavelId: 'sdr1', statusProspeccao: 'PESQUISADA', temContato: true, ...extra,
 });
 
 describe('inscrição em cadência', () => {
+  it('EJ oculta (sem forma de contato) é ignorada com motivo', async () => {
+    const { tx, svc } = montarInscricao({ ejs: [ej('oculta', { temContato: false })] });
+    const r = await svc.inscrever('c1', { ejIds: ['oculta'] }, gestor);
+    expect(r).toEqual({ inscritas: 0, ignoradas: [{ ejId: 'oculta', motivo: 'EJ sem forma de contato' }] });
+    expect(tx.tarefa.createMany).not.toHaveBeenCalled();
+  });
+
   it('gera inscrição + uma tarefa por passo com vencimento = hoje(SP) + diaOffset, responsável da EJ', async () => {
     const { tx, svc } = montarInscricao({ ejs: [ej('e1'), ej('e2', { responsavelId: null })] });
     const agora = new Date('2026-11-21T15:00:00Z'); // 12h em SP

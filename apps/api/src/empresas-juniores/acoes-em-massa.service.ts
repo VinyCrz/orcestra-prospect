@@ -8,6 +8,7 @@ import { StatusService, SELECT_STATUS } from '../funil/status.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { montarWhere } from './filtros';
 import { podeEditarEj } from './permissoes';
+import { EJ_VISIVEL } from './visibilidade';
 
 export interface ResultadoAcaoEmMassa {
   acao: AcaoEmMassaInput['acao'];
@@ -35,7 +36,7 @@ export class AcoesEmMassaService {
       throw new ForbiddenException('Somente GESTOR/ADMIN podem atribuir responsável');
 
     const where: Prisma.EmpresaJuniorWhereInput = input.ids
-      ? { id: { in: input.ids } }
+      ? { id: { in: input.ids }, ...EJ_VISIVEL }
       : montarWhere(input.filtros!, usuario.id);
     const alvos = await this.prisma.empresaJunior.findMany({
       where,

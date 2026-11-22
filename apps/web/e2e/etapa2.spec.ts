@@ -80,7 +80,7 @@ test.beforeAll(async () => {
   ids.sdr1 = (await post<{ id: string }>('/usuarios', { nome: 'QA SDR Um', email: SDR1, senha: SENHA_SDR, papel: 'SDR' })).id;
   ids.sdr2 = (await post<{ id: string }>('/usuarios', { nome: 'QA SDR Dois', email: SDR2, senha: SENHA_SDR, papel: 'SDR' })).id;
   for (const s of ['A', 'B', 'C']) {
-    ids.ejs.push((await post<{ id: string }>('/empresas-juniores', { nome: `${M} ${s}`, uf: 'RS' })).id);
+    ids.ejs.push((await post<{ id: string }>('/empresas-juniores', { nome: `${M} ${s}`, uf: 'RS', site: 'https://example.com' })).id);
   }
 });
 
@@ -211,7 +211,7 @@ test('listas salvas: salvar, aplicar e excluir', async ({ page }) => {
   await page.goto('/empresas-juniores');
   await expect(page.getByTestId('linha-ej').first()).toBeVisible();
   await page.getByTestId('abrir-listas').click();
-  await page.getByRole('button', { name: 'Aplicar' }).first().click();
+  await page.getByRole('button', { name: `Aplicar lista ${nomeLista}` }).click();
   await expect(page).toHaveURL(/busca=QA/);
   const linhas = page.getByTestId('linha-ej');
   await expect(linhas.first()).toContainText('QA TESTE');

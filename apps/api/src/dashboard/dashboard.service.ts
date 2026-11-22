@@ -13,6 +13,9 @@ import { escopoResponsavel, resolverPeriodo } from './periodo';
  *    HistoricoStatus.usuarioId);
  *  - ejsPorUf e coberturaFederacao: a CARTEIRA do usuário (EmpresaJunior.responsavelId). Essas duas são
  *    fotografia atual, não dependem do período.
+ * Visibilidade (EJ_VISIVEL): métricas de BASE (ejsPorUf, funil, cobertura, motivos de perda, tempo por etapa)
+ * só contam EJs com forma de contato (temContato). Métricas de ATIVIDADE do SDR (interações, reuniões, resposta
+ * por canal, ranking, metas, conquistas) contam todo o trabalho feito, inclusive em EJs ocultas.
  */
 @Injectable()
 export class DashboardService {
@@ -30,10 +33,11 @@ export class DashboardService {
     const [uf, funil, cobertura, porSdr, canais, motivos, tempo] = await Promise.all([
       this.prisma.$queryRaw<{ uf: string | null; total: bigint; trabalhadas: bigint }[]>(Prisma.sql`
         SELECT e.uf, count(*) total, count(*) FILTER (WHERE e."statusProspeccao" <> 'NAO_TRABALHADA') trabalhadas
-        FROM empresas_juniores e WHERE true ${eResp} GROUP BY e.uf ORDER BY e.uf`),
+        FROM empresas_juniores e WHERE e."temContato" ${eResp} GROUP BY e.uf ORDER BY e.uf`),
       this.prisma.$queryRaw<{ status: string; alcancaram: number; conv_pct: number | null }[]>(Prisma.sql`
         WITH ordem(status, n) AS (VALUES ('PESQUISADA'::"StatusProspeccao",1),('PRIMEIRO_CONTATO',2),('EM_CONVERSA',3),('REUNIAO_AGENDADA',4),('OPORTUNIDADE',5)),
         alc AS (SELECT max(o.n) n FROM historico_status h JOIN ordem o ON o.status = h.para
+                JOIN empresas_juniores e ON e.id = h."empresaJuniorId" AND e."temContato"
                 WHERE h."criadoEm" >= ${ini} AND h."criadoEm" < ${fim} ${hUsu} GROUP BY h."empresaJuniorId"),
         cnt AS (SELECT n, count(*) c FROM alc GROUP BY n),
         acum AS (SELECT o.n, o.status, sum(coalesce(c.c, 0)) OVER (ORDER BY o.n DESC) alcancaram FROM ordem o LEFT JOIN cnt c USING (n))
@@ -46,7 +50,7 @@ export class DashboardService {
         SELECT f.id, f.sigla, f.nome, count(e.id) total,
                count(e.id) FILTER (WHERE e."statusProspeccao" <> 'NAO_TRABALHADA') trabalhadas,
                round(100.0 * count(e.id) FILTER (WHERE e."statusProspeccao" <> 'NAO_TRABALHADA') / NULLIF(count(e.id), 0), 1)::float8 pct
-        FROM federacoes f LEFT JOIN empresas_juniores e ON e."federacaoId" = f.id ${eResp}
+        FROM federacoes f LEFT JOIN empresas_juniores e ON e."federacaoId" = f.id AND e."temContato" ${eResp}
         GROUP BY f.id, f.sigla, f.nome ${resp ? Prisma.sql`HAVING count(e.id) > 0` : Prisma.empty}
         ORDER BY f.sigla`),
       this.prisma.$queryRaw<{ id: string; nome: string; total: bigint; reunioes: bigint }[]>(Prisma.sql`
@@ -62,6 +66,7 @@ export class DashboardService {
         GROUP BY i.canal ORDER BY total DESC`),
       this.prisma.$queryRaw<{ id: string | null; nome: string | null; total: bigint }[]>(Prisma.sql`
         SELECT m.id, m.nome, count(*) total FROM historico_status h LEFT JOIN motivos_perda m ON m.id = h."motivoPerdaId"
+        JOIN empresas_juniores e ON e.id = h."empresaJuniorId" AND e."temContato"
         WHERE h.para = 'PERDIDA' AND h."criadoEm" >= ${ini} AND h."criadoEm" < ${fim} ${hUsu}
         GROUP BY m.id, m.nome ORDER BY total DESC, m.nome`),
       this.prisma.$queryRaw<{ status: string; dias: number }[]>(Prisma.sql`
@@ -70,6 +75,7 @@ export class DashboardService {
         CROSS JOIN LATERAL (SELECT "criadoEm" FROM historico_status p
           WHERE p."empresaJuniorId" = h."empresaJuniorId" AND (p."criadoEm", p.id) < (h."criadoEm", h.id)
           ORDER BY p."criadoEm" DESC, p.id DESC LIMIT 1) p
+        JOIN empresas_juniores e ON e.id = h."empresaJuniorId" AND e."temContato"
         WHERE h."criadoEm" >= ${ini} AND h."criadoEm" < ${fim} AND h.de IS NOT NULL ${hUsu}
         GROUP BY h.de`),
     ]);

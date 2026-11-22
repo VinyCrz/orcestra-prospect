@@ -55,7 +55,7 @@ test.beforeAll(async () => {
   auth = { Authorization: `Bearer ${((await r.json()) as { accessToken: string }).accessToken}` };
   for (const s of ['A', 'B']) {
     const nome = `${M} ${s}`;
-    const c = await admin.post('/api/empresas-juniores', { data: { nome, uf: 'RS' }, headers: auth });
+    const c = await admin.post('/api/empresas-juniores', { data: { nome, uf: 'RS', site: 'https://example.com' }, headers: auth });
     expect(c.ok()).toBeTruthy();
     ejs.push({ id: ((await c.json()) as { id: string }).id, nome });
   }

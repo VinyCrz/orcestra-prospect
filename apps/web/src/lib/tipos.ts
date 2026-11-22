@@ -68,6 +68,8 @@ export interface EmpresaJuniorDetalhe {
   fontes: string[];
   coletadoEm: string;
   verificado: boolean;
+  /** false = EJ oculta (sem nenhuma forma de contato): não aparece em listas, funil nem dashboard */
+  temContato?: boolean;
   statusProspeccao: StatusProspeccao;
   scoreIcp: number;
   faixaIcp: FaixaIcp | null;

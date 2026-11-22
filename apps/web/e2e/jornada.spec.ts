@@ -47,7 +47,7 @@ test.beforeAll(async () => {
   admin = await pwRequest.newContext({ baseURL: BASE });
   const r = await admin.post('/api/auth/login', { data: { email: ADMIN_EMAIL, senha: ADMIN_SENHA } });
   const auth = { Authorization: `Bearer ${((await r.json()) as { accessToken: string }).accessToken}` };
-  const c = await admin.post('/api/empresas-juniores', { data: { nome: NOME, uf: 'RS' }, headers: auth });
+  const c = await admin.post('/api/empresas-juniores', { data: { nome: NOME, uf: 'RS', site: 'https://example.com' }, headers: auth });
   expect(c.ok()).toBeTruthy();
   ejId = ((await c.json()) as { id: string }).id;
 });

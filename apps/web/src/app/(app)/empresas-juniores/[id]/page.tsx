@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useQuery } from '@tanstack/react-query';
 import {
   ArrowLeft,
+  EyeOff,
   BadgeCheck,
   ExternalLink,
   Globe,
@@ -24,12 +25,11 @@ import { CardScore } from '@/components/ej/card-score';
 import { StatusBadge } from '@/components/status-badge';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { api, ApiError } from '@/lib/api';
 import type { EmpresaJuniorDetalhe } from '@/lib/tipos';
 
-const dataHora = new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
 
 function Vazio() {
   return <span className="text-muted-foreground">Não informado</span>;
@@ -158,6 +158,20 @@ export default function DetalheEjPage({ params }: { params: Promise<{ id: string
         </div>
       </div>
 
+      {ej.temContato === false && (
+        <div
+          role="status"
+          className="mb-6 flex items-start gap-3 rounded-md border border-warning/50 bg-warning/10 p-3 text-sm"
+          data-testid="aviso-ej-oculta"
+        >
+          <EyeOff className="mt-0.5 size-4 shrink-0 text-warning" />
+          <p>
+            <strong>EJ oculta:</strong> ela não tem nenhuma forma de contato, por isso não aparece na lista, no funil nem no
+            dashboard. Cadastre um e-mail, telefone, rede social, site ou um contato e ela volta a aparecer.
+          </p>
+        </div>
+      )}
+
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="grid gap-6 lg:col-span-2">
           <Card>
@@ -278,43 +292,6 @@ export default function DetalheEjPage({ params }: { params: Promise<{ id: string
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Fonte dos dados</CardTitle>
-              <CardDescription>
-                Coletado em {dataHora.format(new Date(ej.coletadoEm))}
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="grid gap-3 text-sm">
-              <div>
-                <p className="mb-1 text-muted-foreground">Fonte principal</p>
-                <LinkExterno href={ej.fonteUrl}>{ehUrlHttp(ej.fonteUrl) ? new URL(ej.fonteUrl).host : ej.fonteUrl}</LinkExterno>
-              </div>
-              {ej.fontes.filter((f) => f !== ej.fonteUrl).length > 0 && (
-                <div>
-                  <p className="mb-1 text-muted-foreground">Outras fontes</p>
-                  <ul className="grid gap-1">
-                    {ej.fontes
-                      .filter((f) => f !== ej.fonteUrl)
-                      .map((f) => (
-                        <li key={f} className="break-all">
-                          {/^https?:\/\/\S+$/.test(f) ? (
-                            <LinkExterno href={f}>{f.replace(/^https?:\/\//, '')}</LinkExterno>
-                          ) : (
-                            f
-                          )}
-                        </li>
-                      ))}
-                  </ul>
-                </div>
-              )}
-              <p className="text-xs text-muted-foreground">
-                {ej.verificado
-                  ? 'Dados verificados manualmente.'
-                  : 'Dados ainda não verificados manualmente.'}
-              </p>
-            </CardContent>
-          </Card>
         </div>
       </div>
     </div>

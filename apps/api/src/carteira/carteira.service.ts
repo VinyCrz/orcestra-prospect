@@ -7,6 +7,7 @@ import type { Prisma } from '@prisma/client';
 import type { UsuarioAutenticado } from '../auth/auth.types';
 import { AuditService } from '../common/audit.service';
 import { montarWhere } from '../empresas-juniores/filtros';
+import { EJ_VISIVEL } from '../empresas-juniores/visibilidade';
 import { PrismaService } from '../prisma/prisma.service';
 import { distribuirRodizio } from './rodizio';
 
@@ -28,7 +29,7 @@ export class CarteiraService {
 
     const where: Prisma.EmpresaJuniorWhereInput =
       input.modo === 'MANUAL'
-        ? { id: { in: input.ejIds } }
+        ? { id: { in: input.ejIds }, ...EJ_VISIVEL }
         : {
             AND: [
               montarWhere(input.filtros, usuario.id),
@@ -50,7 +51,7 @@ export class CarteiraService {
       // Carga atual por SDR/UF, descontando as EJs que serão redistribuídas.
       const cargaDb = await this.prisma.empresaJunior.groupBy({
         by: ['responsavelId', 'uf'],
-        where: { responsavelId: { in: sdrIds } },
+        where: { ...EJ_VISIVEL, responsavelId: { in: sdrIds } },
         _count: { _all: true },
       });
       const carga = new Map<string, number>();

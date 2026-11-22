@@ -102,6 +102,15 @@ describe('dashboard: período e permissão', () => {
     expect(valores).not.toContain('outro');
     expect(queryRaw).toHaveBeenCalledTimes(7);
   });
+  it('métricas de base filtram temContato; atividade do SDR não', async () => {
+    const queryRaw = jest.fn().mockResolvedValue([]);
+    const svc = new DashboardService({ $queryRaw: queryRaw } as unknown as PrismaService);
+    await svc.obter({}, { id: 'g1', email: '', nome: 'G', papel: 'GESTOR' });
+    const sqls = queryRaw.mock.calls.map((c) => (c[0] as { strings: string[] }).strings.join('?'));
+    const [uf, funil, cobertura, porSdr, canais, motivos, tempo] = sqls;
+    for (const q of [uf, funil, cobertura, motivos, tempo]) expect(q).toContain('"temContato"');
+    for (const q of [porSdr, canais]) expect(q).not.toContain('temContato');
+  });
 });
 
 describe('concessão de conquistas', () => {

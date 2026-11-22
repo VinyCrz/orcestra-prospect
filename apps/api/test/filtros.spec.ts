@@ -8,20 +8,15 @@ describe('filtro comContato', () => {
     expect(filtrosEjSchema.parse({}).comContato).toBeUndefined();
   });
 
-  it('true: exige algum canal institucional ou contato liberado', () => {
-    const w = montarWhere({ comContato: true }, 'u1') as { AND: { OR: Record<string, unknown>[] }[] };
-    const or = w.AND[0].OR;
-    const campos = or.flatMap((c) => Object.keys(c));
-    expect(campos).toEqual(
-      expect.arrayContaining(['site', 'instagram', 'linkedin', 'facebook', 'emailInstitucional', 'telefoneInstitucional', 'contatos']),
-    );
-    const contatos = or.find((c) => 'contatos' in c) as { contatos: { some: Record<string, unknown> } };
-    expect(contatos.contatos.some).toMatchObject({ optOut: false, anonimizadoEm: null });
+  it('todo where inclui temContato=true (EJ visível)', () => {
+    expect(montarWhere({}, 'u1')).toEqual({ AND: [{ temContato: true }] });
+    const w = montarWhere({ uf: ['SP'], comContato: true }, 'u1') as { AND: unknown[] };
+    expect(w.AND[0]).toEqual({ temContato: true });
+    expect(w.AND).toHaveLength(2); // comContato=true é redundante
   });
 
-  it('false: nega a mesma condição; sem filtro não restringe', () => {
-    const w = montarWhere({ comContato: false }, 'u1') as { AND: { NOT: unknown }[] };
-    expect(w.AND[0].NOT).toBeDefined();
-    expect(montarWhere({}, 'u1')).toEqual({});
+  it('comContato=false contradiz a visibilidade (resultado vazio)', () => {
+    const w = montarWhere({ comContato: false }, 'u1') as { AND: unknown[] };
+    expect(w.AND).toEqual([{ temContato: true }, { temContato: false }]);
   });
 });

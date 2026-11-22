@@ -322,6 +322,12 @@ model EmpresaJunior {
   scoreVersao           Int?
   responsavelId         String?
   observacoes           String?
+  /// Tem alguma forma de contato (só essas aparecem no sistema; as demais ficam ocultas, nunca apagadas).
+  /// MANTIDO PELO BANCO (migration ej_tem_contato), não escreva pela API: o trigger BEFORE INSERT/UPDATE
+  /// recalcula sempre e o trigger em contatos recalcula a EJ afetada. Regra (função ej_tem_contato):
+  /// site/instagram/linkedin/facebook/emailInstitucional/telefoneInstitucional preenchido (não null nem
+  /// só espaços) OU contato com optOut = false, anonimizadoEm null e email/telefone/whatsapp/linkedin preenchido.
+  temContato            Boolean          @default(false)
   criadoEm              DateTime         @default(now())
   atualizadoEm          DateTime         @updatedAt
 
@@ -357,6 +363,13 @@ model EmpresaJunior {
   /// "Prioridades da semana": responsavelId = :sdr AND statusProspeccao = NAO_TRABALHADA ORDER BY scoreIcp DESC LIMIT n
   @@index([responsavelId, statusProspeccao, scoreIcp(sort: Desc)])
   @@index([membrosEstimados])
+  /// temContato = true em toda consulta visível. Kanban: coluna por status ORDER BY score DESC, nome LIMIT n
+  /// (sem sort) + contagem por status/funil (index-only)
+  @@index([temContato, statusProspeccao, scoreIcp(sort: Desc), nome])
+  /// dashboard "EJs por UF"/funil por UF e filtro por UF (index-only)
+  @@index([temContato, uf, statusProspeccao])
+  /// lista padrão (ORDER BY nome LIMIT n, sem sort)
+  @@index([temContato, nome])
   /// busca por trecho (ILIKE '%...%') — requer extensão pg_trgm (criada na migration etapa2)
   @@index([nome(ops: raw("gin_trgm_ops"))], type: Gin, map: "empresas_juniores_nome_trgm_idx")
   @@index([nomeNormalizado(ops: raw("gin_trgm_ops"))], type: Gin, map: "empresas_juniores_nomeNormalizado_trgm_idx")

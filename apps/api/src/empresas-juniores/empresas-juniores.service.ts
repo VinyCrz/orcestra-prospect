@@ -23,6 +23,7 @@ import { ScoreService } from '../score/score.service';
 import { StatusService } from '../funil/status.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { montarOrderBy, montarWhere } from './filtros';
+import { EJ_VISIVEL } from './visibilidade';
 import { exigirEdicaoEj, podeEditarEj } from './permissoes';
 
 /** Valor especial do filtro de federação para EJs sem federação confirmada. */
@@ -127,11 +128,13 @@ export class EmpresasJunioresService {
     const [ufs, regioes] = await Promise.all([
       this.prisma.empresaJunior.groupBy({
         by: ['uf'],
+        where: EJ_VISIVEL,
         _count: { _all: true },
         orderBy: { uf: 'asc' },
       }),
       this.prisma.empresaJunior.groupBy({
         by: ['regiao'],
+        where: EJ_VISIVEL,
         _count: { _all: true },
         orderBy: { regiao: 'asc' },
       }),
@@ -149,9 +152,9 @@ export class EmpresasJunioresService {
     const ies = await this.prisma.ies.findMany({
       where: {
         ...(uf ? { uf: uf.toUpperCase() } : {}),
-        ...(chave ? { chave: { contains: chave } } : { empresas: { some: {} } }),
+        ...(chave ? { chave: { contains: chave } } : { empresas: { some: EJ_VISIVEL } }),
       },
-      select: { id: true, nome: true, sigla: true, uf: true, _count: { select: { empresas: true } } },
+      select: { id: true, nome: true, sigla: true, uf: true, _count: { select: { empresas: { where: EJ_VISIVEL } } } },
       orderBy: [{ empresas: { _count: 'desc' } }, { nome: 'asc' }],
       take: 200,
     });
@@ -160,7 +163,7 @@ export class EmpresasJunioresService {
 
   async opcoesTags() {
     const tags = await this.prisma.tag.findMany({
-      select: { id: true, nome: true, tipo: true, cor: true, _count: { select: { empresas: true } } },
+      select: { id: true, nome: true, tipo: true, cor: true, _count: { select: { empresas: { where: EJ_VISIVEL } } } },
       orderBy: [{ tipo: 'asc' }, { nome: 'asc' }],
     });
     return tags.map(({ _count, ...t }) => ({ ...t, total: _count.empresas }));
@@ -175,14 +178,14 @@ export class EmpresasJunioresService {
       }),
       this.prisma.empresaJunior.groupBy({
         by: ['responsavelId'],
-        where: { responsavelId: { not: null } },
+        where: { ...EJ_VISIVEL, responsavelId: { not: null } },
         _count: { _all: true },
       }),
     ]);
     const m = new Map(carga.map((c) => [c.responsavelId, c._count._all]));
     return {
       usuarios: usuarios.map((u) => ({ ...u, totalEjs: m.get(u.id) ?? 0 })),
-      semResponsavel: await this.prisma.empresaJunior.count({ where: { responsavelId: null } }),
+      semResponsavel: await this.prisma.empresaJunior.count({ where: { ...EJ_VISIVEL, responsavelId: null } }),
     };
   }
 

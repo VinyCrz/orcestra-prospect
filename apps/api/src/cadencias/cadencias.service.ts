@@ -20,6 +20,7 @@ import type { UsuarioAutenticado } from '../auth/auth.types';
 import { AuditService, type RegistroAudit } from '../common/audit.service';
 import { inicioDoDiaSP, somarDias } from '../common/fuso';
 import { exigirEdicaoEj } from '../empresas-juniores/permissoes';
+import { MOTIVO_EJ_OCULTA } from '../empresas-juniores/visibilidade';
 import { PrismaService } from '../prisma/prisma.service';
 import { avancouNoFunil, encerrarInscricoes } from './encerramento';
 
@@ -225,7 +226,7 @@ export class CadenciasService {
     const [ejs, jaAtivas, contato] = await Promise.all([
       this.prisma.empresaJunior.findMany({
         where: { id: { in: ejIds } },
-        select: { id: true, nome: true, responsavelId: true, statusProspeccao: true },
+        select: { id: true, nome: true, responsavelId: true, statusProspeccao: true, temContato: true },
       }),
       this.prisma.inscricaoCadencia.findMany({
         where: { cadenciaId, status: 'ATIVA', empresaJuniorId: { in: ejIds } },
@@ -250,6 +251,7 @@ export class CadenciasService {
       const ej = porId.get(id);
       let motivo: string | null = null;
       if (!ej) motivo = 'Empresa Júnior não encontrada';
+      else if (!ej.temContato) motivo = MOTIVO_EJ_OCULTA;
       else if (u.papel === 'SDR' && ej.responsavelId !== u.id) motivo = 'Fora da sua carteira';
       else if (ej.statusProspeccao === 'PERDIDA') motivo = 'EJ perdida';
       else if (avancouNoFunil(ej.statusProspeccao)) motivo = 'EJ já avançou no funil';

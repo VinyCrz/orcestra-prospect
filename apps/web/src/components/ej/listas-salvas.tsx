@@ -144,6 +144,7 @@ export function ListasSalvas({
                 <Button
                   size="sm"
                   variant="secondary"
+                  aria-label={`Aplicar lista ${l.nome}`}
                   onClick={() => {
                     onAplicar(filtrosParaUrl(l.filtros));
                     setAberto(false);
