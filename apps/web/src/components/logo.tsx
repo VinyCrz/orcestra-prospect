@@ -2,8 +2,8 @@ import Image from 'next/image';
 import { cn } from '@/lib/utils';
 
 /**
- * Marca Orc'estra. A arte tem fundo verde próprio, então vai em bloco arredondado.
- * `completa`: logo larga (>= sm); em telas estreitas vira ícone + "Prospect".
+ * Marca: ícone do capacete Orc'estra (arte com fundo verde próprio, em bloco arredondado) + nome do sistema.
+ * `completa`: versão maior (sidebar, telas de login); senão compacta (topo em telas estreitas).
  */
 export function Logo({
   className,
@@ -13,31 +13,21 @@ export function Logo({
   completa?: boolean;
 }) {
   return (
-    <div className={cn('flex items-center gap-2 font-semibold tracking-tight', className)}>
-      {completa ? (
-        <Image
-          src="/brand/logo-orcestra.png"
-          alt="Orc'estra Gamificação"
-          width={378}
-          height={159}
-          priority
-          className="h-12 w-auto rounded-lg bg-logo-bg shadow-sm"
-        />
-      ) : (
-        <>
-          <Image
-            src="/brand/icone-orcestra.png"
-            alt="Orc'estra Gamificação"
-            width={49}
-            height={56}
-            priority
-            className="h-8 w-auto rounded-md bg-logo-bg p-1 shadow-sm"
-          />
-          <span>
-            Prospect
-          </span>
-        </>
-      )}
+    <div className={cn('flex items-center gap-2.5 font-semibold tracking-tight', className)}>
+      <Image
+        src="/brand/icone-orcestra.png"
+        alt="Orc'estra"
+        width={49}
+        height={56}
+        priority
+        className={cn(
+          'w-auto rounded-md bg-logo-bg shadow-sm',
+          completa ? 'h-11 p-1' : 'h-8 p-0.5',
+        )}
+      />
+      <span className="whitespace-nowrap text-base leading-tight">
+        Orc&apos;estra <span className="text-primary">Prospect</span>
+      </span>
     </div>
   );
 }
