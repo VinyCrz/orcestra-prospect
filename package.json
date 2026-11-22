@@ -16,6 +16,7 @@
     "db:migrate": "pnpm --filter @orcestra/api db:migrate",
     "db:migrate:deploy": "pnpm --filter @orcestra/api db:migrate:deploy",
     "db:seed": "pnpm --filter @orcestra/api db:seed",
+    "trocar-senha": "pnpm --filter @orcestra/api trocar-senha",
     "coleta": "pnpm --filter @orcestra/coleta coleta"
   },
   "devDependencies": {
