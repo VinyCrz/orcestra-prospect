@@ -118,7 +118,7 @@ ${campos
 
 ## Busca na web (redes de EJs sem contato)
 
-Arquivo \`data/redes-encontradas.json\`: ${e.redes.entradas} EJs (RJ e SP, 2026-11-22) com Instagram, LinkedIn de empresa e/ou site
+Arquivo \`data/redes-encontradas.json\`: ${e.redes.entradas} EJs (RJ, SP, MG e PR, 2026-11-22) com Instagram, LinkedIn de empresa e/ou site
 confirmados por página pública (\`evidencia\`, que entra em \`fontes\`). Critério: nome igual e IES ou cidade compatível na própria
 evidência; perfis pessoais, contas de processo seletivo e casos ambíguos ficaram de fora. Aplicadas nesta coleta: ${e.redes.aplicadas}.
 
