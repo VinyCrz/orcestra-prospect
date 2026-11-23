@@ -35,6 +35,7 @@ import { escreverCsv } from './csv.js';
 import { gerarRelatorio } from './relatorio.js';
 import { carregarMunicipios } from './ibge.js';
 import { verificarLinks } from './links.js';
+import { aplicarRedesEncontradas } from './redes-encontradas.js';
 
 const RAIZ = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../..');
 const DATA = path.join(RAIZ, 'data');
@@ -126,6 +127,13 @@ async function main() {
     (a, b) => (a.uf ?? 'ZZ').localeCompare(b.uf ?? 'ZZ') || a.nome.localeCompare(b.nome, 'pt-BR'),
   );
 
+  // Perfis/sites confirmados por busca na web (data/redes-encontradas.json), antes da verificação dos sites.
+  const redes = await aplicarRedesEncontradas(ejs, path.join(DATA, 'redes-encontradas.json'));
+  console.log(
+    `✔ Redes encontradas por busca na web: ${redes.aplicadas} EJs atualizadas (${redes.entradas} entradas` +
+      `${redes.semEj.length ? `; sem EJ na base: ${redes.semEj.join(', ')}` : ''})`,
+  );
+
   // Sites fora do ar são descartados; Instagram/LinkedIn publicados no próprio site são aproveitados.
   const links = args.has('--sem-links')
     ? null
@@ -157,6 +165,7 @@ async function main() {
       ufs: UFS.map((u) => u.sigla),
       federacoes: [...federacoes.values()],
       links,
+      redes,
     }),
   );
   console.log(

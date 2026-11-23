@@ -1,6 +1,6 @@
 # Relatório da coleta de Empresas Juniores
 
-Gerado em: 2026-11-22T23:58:43.861Z  
+Gerado em: 2026-11-23T00:32:51.625Z  
 Gerado por: `pnpm coleta` (scripts/coleta)
 
 ## Resumo
@@ -19,9 +19,9 @@ Linha de base: 2026-11-21 (coleta anterior, antes da verificação dos sites).
 | Total de EJs | 1515 | 1515 | +0 |
 | Com federação confirmada | 143 (9%) | 143 (9%) | +0 |
 | Com IES | 494 (33%) | 494 (33%) | +0 |
-| Com site | 91 (6%) | 67 (4%) | -24 |
-| Com Instagram | 53 (3%) | 94 (6%) | +41 |
-| Com LinkedIn | 2 (0%) | 40 (3%) | +38 |
+| Com site | 91 (6%) | 101 (7%) | +10 |
+| Com Instagram | 53 (3%) | 193 (13%) | +140 |
+| Com LinkedIn | 2 (0%) | 117 (8%) | +115 |
 
 Por federação (EJs com federação confirmada pela própria federação):
 
@@ -95,13 +95,19 @@ Por federação (EJs com federação confirmada pela própria federação):
 | IES | 494 | 33% |
 | Federação | 143 | 9% |
 | Ano de fundação (abertura do CNPJ) | 1498 | 99% |
-| Site | 67 | 4% |
-| Instagram | 94 | 6% |
-| LinkedIn | 40 | 3% |
+| Site | 101 | 7% |
+| Instagram | 193 | 13% |
+| LinkedIn | 117 | 8% |
 | E-mail institucional | 53 | 3% |
 | Telefone institucional | 22 | 1% |
 | Áreas/cursos | 136 | 9% |
 | Serviços | 134 | 9% |
+
+## Busca na web (redes de EJs sem contato)
+
+Arquivo `data/redes-encontradas.json`: 139 EJs (RJ e SP, 2026-11-22) com Instagram, LinkedIn de empresa e/ou site
+confirmados por página pública (`evidencia`, que entra em `fontes`). Critério: nome igual e IES ou cidade compatível na própria
+evidência; perfis pessoais, contas de processo seletivo e casos ambíguos ficaram de fora. Aplicadas nesta coleta: 139.
 
 ## Verificação dos sites
 
@@ -109,11 +115,11 @@ Cada site foi aberto nesta coleta. Site fora do ar é removido da EJ (fica `null
 e a EJ não tinha Instagram/LinkedIn, o perfil publicado **no próprio site** é aproveitado quando casa com o
 nome da EJ ou com o endereço do site (perfis de clientes, parceiros, IES ou federação são ignorados).
 
-- Sites verificados: 91
+- Sites verificados: 125
 - Sites descartados (fora do ar): 24
 - Endereço corrigido (http no lugar de https quebrado, ou com/sem "www."): 0
-- Instagram encontrado no site da EJ: 41
-- LinkedIn encontrado no site da EJ: 38
+- Instagram encontrado no site da EJ: 66
+- LinkedIn encontrado no site da EJ: 39
 
 | EJ | UF | Site descartado | Motivo |
 |---|---|---|---|

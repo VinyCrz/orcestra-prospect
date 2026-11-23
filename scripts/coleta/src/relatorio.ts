@@ -13,6 +13,7 @@ interface Entrada {
   ufs: string[];
   federacoes: FederacaoColetada[];
   links: ResultadoLinks | null;
+  redes: { entradas: number; aplicadas: number; semEj: string[] };
 }
 
 function contar<T>(xs: T[], f: (x: T) => string): [string, number][] {
@@ -114,6 +115,12 @@ ${campos
     return `| ${n} | ${c} | ${pct(c, t)} |`;
   })
   .join('\n')}
+
+## Busca na web (redes de EJs sem contato)
+
+Arquivo \`data/redes-encontradas.json\`: ${e.redes.entradas} EJs (RJ e SP, 2026-11-22) com Instagram, LinkedIn de empresa e/ou site
+confirmados por página pública (\`evidencia\`, que entra em \`fontes\`). Critério: nome igual e IES ou cidade compatível na própria
+evidência; perfis pessoais, contas de processo seletivo e casos ambíguos ficaram de fora. Aplicadas nesta coleta: ${e.redes.aplicadas}.
 
 ${secaoLinks(e.links)}
 ## Fontes usadas
