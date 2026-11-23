@@ -82,7 +82,7 @@ async function baixar(url: string): Promise<{ status: number; html: string; fina
 
 async function baixarComNovaTentativa(url: string) {
   let r = await baixar(url);
-  for (let i = 0; i < 2 && 'erro' in r && TRANSITORIOS.includes(r.erro); i++) {
+  for (let i = 0; i < 2 && 'erro' in r && r.erro !== 'ENOTFOUND' && !TLS.includes(r.erro); i++) {
     await new Promise((ok) => setTimeout(ok, 3000 * (i + 1)));
     r = await baixar(url);
   }
