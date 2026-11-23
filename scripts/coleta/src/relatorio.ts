@@ -1,6 +1,7 @@
 import type { EjColetada } from '@orcestra/shared';
 import type { FederacaoColetada, ResultadoFonte } from './base.js';
 import { FONTES_SEM_LISTA, LINHA_DE_BASE } from './investigadas.js';
+import type { ResultadoLinks } from './links.js';
 
 interface Entrada {
   ejs: EjColetada[];
@@ -11,6 +12,7 @@ interface Entrada {
   coletadoEm: string;
   ufs: string[];
   federacoes: FederacaoColetada[];
+  links: ResultadoLinks | null;
 }
 
 function contar<T>(xs: T[], f: (x: T) => string): [string, number][] {
@@ -62,7 +64,7 @@ Gerado por: \`pnpm coleta\` (scripts/coleta)
 - Registros duplicados mesclados: ${e.duplicados}
 - Excluídas por situação cadastral BAIXADA/NULA na Receita: ${e.excluidas.length}
 
-## Antes × depois (ampliação com novas fontes)
+## Antes × depois
 
 Linha de base: ${LINHA_DE_BASE.data}.
 
@@ -73,6 +75,7 @@ ${linhaAntesDepois('Com federação confirmada', LINHA_DE_BASE.federacao, n((x) 
 ${linhaAntesDepois('Com IES', LINHA_DE_BASE.ies, n((x) => !!x.ies))}
 ${linhaAntesDepois('Com site', LINHA_DE_BASE.site, n((x) => !!x.site))}
 ${linhaAntesDepois('Com Instagram', LINHA_DE_BASE.instagram, n((x) => !!x.instagram))}
+${linhaAntesDepois('Com LinkedIn', LINHA_DE_BASE.linkedin, n((x) => !!x.linkedin))}
 
 Por federação (EJs com federação confirmada pela própria federação):
 
@@ -112,6 +115,7 @@ ${campos
   })
   .join('\n')}
 
+${secaoLinks(e.links)}
 ## Fontes usadas
 
 ${e.resultados.map((r) => `- **${r.fonte}** — ${r.url} (${r.ejs.length} registros)${r.observacao ? ` — ${r.observacao}` : ''}`).join('\n')}
@@ -149,4 +153,24 @@ ${e.falhas.length ? `### Fontes que falharam nesta execução\n\n${e.falhas.map(
 - Site/Instagram/LinkedIn: disponíveis principalmente para EJs de RS, RJ e (UnB) DF.
 - O cadastro nacional pode conter EJs que deixaram a rede; a situação cadastral ATIVA na Receita não garante que a EJ siga operando.
 `;
+}
+
+function secaoLinks(l: ResultadoLinks | null): string {
+  if (!l) return '## Verificação dos sites\n\nNão executada nesta coleta (`--sem-links`).\n';
+  return `## Verificação dos sites
+
+Cada site foi aberto nesta coleta. Site fora do ar é removido da EJ (fica \`null\`); se o site está no ar
+e a EJ não tinha Instagram/LinkedIn, o perfil publicado **no próprio site** é aproveitado quando casa com o
+nome da EJ ou com o endereço do site (perfis de clientes, parceiros, IES ou federação são ignorados).
+
+- Sites verificados: ${l.verificados}
+- Sites descartados (fora do ar): ${l.descartados.length}
+- Endereço corrigido (http no lugar de https quebrado, ou com/sem "www."): ${l.urlCorrigida}
+- Instagram encontrado no site da EJ: ${l.instagramNovos}
+- LinkedIn encontrado no site da EJ: ${l.linkedinNovos}
+${
+  l.descartados.length
+    ? `\n| EJ | UF | Site descartado | Motivo |\n|---|---|---|---|\n${l.descartados.map((d) => `| ${d.nome.replace(/\|/g, '/')} | ${d.uf ?? '-'} | ${d.url} | ${d.motivo} |`).join('\n')}\n`
+    : ''
+}`;
 }

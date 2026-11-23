@@ -3,7 +3,8 @@
  *
  * Uso: pnpm coleta [--sem-cnpj] [--atualizar] [--limite-cnpj=N]
  *   --sem-cnpj        não consulta a Receita (usa só o cache existente)
- *   --atualizar       ignora o cache HTTP das páginas das federações
+ *   --atualizar       ignora o cache HTTP das páginas das federações e das checagens de sites
+ *   --sem-links       não verifica os sites das EJs (nem busca Instagram/LinkedIn neles)
  *   --limite-cnpj=N   consulta no máximo N CNPJs novos nesta execução
  *
  * Saída: data/ejs.json, data/ejs.csv, data/federacoes.json, data/RELATORIO.md
@@ -33,6 +34,7 @@ import { consultarCnpj, type DadosCnpj } from './cnpj.js';
 import { escreverCsv } from './csv.js';
 import { gerarRelatorio } from './relatorio.js';
 import { carregarMunicipios } from './ibge.js';
+import { verificarLinks } from './links.js';
 
 const RAIZ = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../..');
 const DATA = path.join(RAIZ, 'data');
@@ -124,6 +126,15 @@ async function main() {
     (a, b) => (a.uf ?? 'ZZ').localeCompare(b.uf ?? 'ZZ') || a.nome.localeCompare(b.nome, 'pt-BR'),
   );
 
+  // Sites fora do ar são descartados; Instagram/LinkedIn publicados no próprio site são aproveitados.
+  const links = args.has('--sem-links')
+    ? null
+    : await verificarLinks(ejs, {
+        cacheDir: path.join(DATA, 'cache', 'links'),
+        ignorarCache: args.has('--atualizar'),
+        log: console.log,
+      });
+
   const federacoes = new Map<string, FederacaoColetada>();
   for (const r of resultados) for (const f of r.federacoes) federacoes.set(f.sigla, f);
 
@@ -145,6 +156,7 @@ async function main() {
       coletadoEm,
       ufs: UFS.map((u) => u.sigla),
       federacoes: [...federacoes.values()],
+      links,
     }),
   );
   console.log(

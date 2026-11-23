@@ -9,7 +9,8 @@ Dados brutos: `data/ejs.json` e `data/ejs.csv` são grandes e estão bloqueados 
 2. **RioJunior** (`sources/riojunior.ts`): página pública de EJs e API REST pública do WordPress (áreas e serviços).
 3. **Receita Federal via BrasilAPI** (fallback minhareceita.org), em `cnpj.ts`: razão social, município, UF, abertura e situação cadastral.
 4. **IBGE** (`ibge.ts`): grafia oficial das cidades.
-5. Normalização e deduplicação em `packages/shared/src/normalize.ts` (CNPJ com dígito verificador, UF, cidade, IES, URLs, Instagram). Deduplicação por CNPJ; sem CNPJ, nome normalizado + IES + UF.
+5. **Verificação dos sites** (`links.ts`): abre cada site; fora do ar (sem DNS, 404/410, certificado inválido, domínio estacionado/à venda, sem resposta) → `site = null` e lista no relatório. Site no ar e EJ sem Instagram/LinkedIn → usa o perfil linkado no próprio site, só se casar com o nome da EJ ou o endereço do site (ambíguo → nada). Cache em `data/cache/links` (7 dias). `--sem-links` pula.
+6. Normalização e deduplicação em `packages/shared/src/normalize.ts` (CNPJ com dígito verificador, UF, cidade, IES, URLs, Instagram). Deduplicação por CNPJ; sem CNPJ, nome normalizado + IES + UF.
 
 Infraestrutura: `http.ts` (intervalo mínimo de 1,2 s por host, backoff em 429/5xx, User-Agent genérico), `base.ts`, `csv.ts`, `relatorio.ts`, `index.ts` (orquestra).
 
@@ -25,9 +26,11 @@ Infraestrutura: `http.ts` (intervalo mínimo de 1,2 s por host, backoff em 429/5
 
 ```bash
 pnpm coleta                      # usa cache
-pnpm coleta --atualizar            # ignora cache das páginas
+pnpm coleta --atualizar            # ignora cache das páginas e das checagens de sites
+pnpm coleta --sem-links            # não verifica sites
 pnpm coleta --limite-cnpj=N        # limita consultas novas
 pnpm db:seed                     # carrega no banco (idempotente)
+# depois: Configurações › Score de ICP › Recalcular tudo (o critério "Tem site/redes" muda)
 ```
 
 O seed não sobrescreve campos de trabalho comercial.

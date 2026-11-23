@@ -56,13 +56,14 @@ export const FONTES_SEM_LISTA: Array<{ fonte: string; url: string; situacao: str
   },
 ];
 
-/** Linha de base da coleta anterior (FEJERS + RioJunior), para o comparativo antes × depois. */
+/** Linha de base: coleta de 2026-11-21 (antes da verificação dos sites), para o comparativo antes × depois. */
 export const LINHA_DE_BASE = {
-  data: '2026-11-20 (coleta anterior)',
+  data: '2026-11-21 (coleta anterior, antes da verificação dos sites)',
   total: 1515,
-  federacao: 140,
-  ies: 453,
-  site: 72,
-  instagram: 24,
-  porFederacao: { FEJERS: 65, RioJunior: 75 } as Record<string, number>,
+  federacao: 143,
+  ies: 494,
+  site: 91,
+  instagram: 53,
+  linkedin: 2,
+  porFederacao: { FEJERS: 65, RioJunior: 75, Juniores: 3 } as Record<string, number>,
 };

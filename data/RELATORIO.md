@@ -1,6 +1,6 @@
 # Relatório da coleta de Empresas Juniores
 
-Gerado em: 2026-11-21T00:27:21.012Z  
+Gerado em: 2026-11-22T23:58:43.861Z  
 Gerado por: `pnpm coleta` (scripts/coleta)
 
 ## Resumo
@@ -10,17 +10,18 @@ Gerado por: `pnpm coleta` (scripts/coleta)
 - Registros duplicados mesclados: 112
 - Excluídas por situação cadastral BAIXADA/NULA na Receita: 12
 
-## Antes × depois (ampliação com novas fontes)
+## Antes × depois
 
-Linha de base: 2026-11-20 (coleta anterior).
+Linha de base: 2026-11-21 (coleta anterior, antes da verificação dos sites).
 
 | Indicador | Antes | Depois | Variação |
 |---|---:|---:|---:|
 | Total de EJs | 1515 | 1515 | +0 |
-| Com federação confirmada | 140 (9%) | 143 (9%) | +3 |
-| Com IES | 453 (30%) | 494 (33%) | +41 |
-| Com site | 72 (5%) | 91 (6%) | +19 |
-| Com Instagram | 24 (2%) | 53 (3%) | +29 |
+| Com federação confirmada | 143 (9%) | 143 (9%) | +0 |
+| Com IES | 494 (33%) | 494 (33%) | +0 |
+| Com site | 91 (6%) | 67 (4%) | -24 |
+| Com Instagram | 53 (3%) | 94 (6%) | +41 |
+| Com LinkedIn | 2 (0%) | 40 (3%) | +38 |
 
 Por federação (EJs com federação confirmada pela própria federação):
 
@@ -28,7 +29,7 @@ Por federação (EJs com federação confirmada pela própria federação):
 |---|---:|---:|
 | FEJERS | 65 | 65 |
 | RioJunior | 75 | 75 |
-| Juniores | 0 | 3 |
+| Juniores | 3 | 3 |
 
 ## Total por UF
 
@@ -94,13 +95,52 @@ Por federação (EJs com federação confirmada pela própria federação):
 | IES | 494 | 33% |
 | Federação | 143 | 9% |
 | Ano de fundação (abertura do CNPJ) | 1498 | 99% |
-| Site | 91 | 6% |
-| Instagram | 53 | 3% |
-| LinkedIn | 2 | 0% |
+| Site | 67 | 4% |
+| Instagram | 94 | 6% |
+| LinkedIn | 40 | 3% |
 | E-mail institucional | 53 | 3% |
 | Telefone institucional | 22 | 1% |
 | Áreas/cursos | 136 | 9% |
 | Serviços | 134 | 9% |
+
+## Verificação dos sites
+
+Cada site foi aberto nesta coleta. Site fora do ar é removido da EJ (fica `null`); se o site está no ar
+e a EJ não tinha Instagram/LinkedIn, o perfil publicado **no próprio site** é aproveitado quando casa com o
+nome da EJ ou com o endereço do site (perfis de clientes, parceiros, IES ou federação são ignorados).
+
+- Sites verificados: 91
+- Sites descartados (fora do ar): 24
+- Endereço corrigido (http no lugar de https quebrado, ou com/sem "www."): 0
+- Instagram encontrado no site da EJ: 41
+- LinkedIn encontrado no site da EJ: 38
+
+| EJ | UF | Site descartado | Motivo |
+|---|---|---|---|
+| AlQualis Jr. | RJ | https://www.alqualisjunior.com.br/ | domínio não existe mais (sem DNS) |
+| Âmbar Consultoria Ambiental Júnior | RJ | https://ambarconsultoriajr.com.br/ | domínio não existe mais (sem DNS) |
+| ATELIÊ MUDA | DF | https://ateliemuda.com/ | página não existe (HTTP 404) |
+| Atena Consultoria Jr. | RS | http://atenajr.com/ | domínio não existe mais (sem DNS) |
+| Carioca Jr | RJ | https://cariocajr.com.br/ | certificado inválido (CERT_HAS_EXPIRED) |
+| Catena Consultoria | RJ | https://catenaconsultoria.com/pt/sobre-nos/ | domínio não existe mais (sem DNS) |
+| CPEn Jr | RS | https://www.cpenjr.com/ | domínio não existe mais (sem DNS) |
+| ECAPE - EMPRESA JÚNIOR DE CONSULTORIA AGROPECUÁRIA E PLANEJAMENTO ESTRATÉGICO | RS | https://www.ecapejrconsultoria.com/ | domínio não existe mais (sem DNS) |
+| EcoLógica Jr. | RS | https://www.ecologicajr.com.br/ | domínio não existe mais (sem DNS) |
+| EngerSolution Consultoria Jr. | RS | https://engersolution.com.br/ | domínio não existe mais (sem DNS) |
+| ENV Consultoria | RJ | https://envjr.com/ | não respondeu (EAI_AGAIN) |
+| Expand Jr. - Consultoria Internacional | RJ | http://www.expandjr.com.br/ | domínio não existe mais (sem DNS) |
+| expresse! consultoria | RJ | https://expresseconsultoria.com.br/ | domínio não existe mais (sem DNS) |
+| Farmac Jr. | RJ | https://farmacjr.com/ | domínio não existe mais (sem DNS) |
+| Flora Júnior | RJ | https://www.florajunior.com/ | domínio não existe mais (sem DNS) |
+| Horizonte Soluções Geofísicas | RJ | https://www.horizontegeofisica.com/ | domínio não existe mais (sem DNS) |
+| Insight Consultoria | RJ | https://insightjunior.com.br/ | domínio não existe mais (sem DNS) |
+| LEVE Consultoria e Gestão de Projetos | RJ | https://ejleve.com.br/ | não respondeu (EAI_AGAIN) |
+| Mecajun | DF | https://mecajun.com/ | não respondeu (UND_ERR_CONNECT_TIMEOUT) |
+| Med.Co Jr | RJ | https://medcojr.com/ | domínio não existe mais (sem DNS) |
+| Multi Jr | RJ | https://multijr.com.br/ | domínio não existe mais (sem DNS) |
+| Nuvem Jr. | RS | https://www.nuvemjr.com/ | domínio não existe mais (sem DNS) |
+| Polaris Jr. | DF | https://polarisjrblog.wordpress.com/ | página não existe (HTTP 410) |
+| XPORT Jr. Consultoria e Suporte Internacional | RJ | https://www.xportjr.com.br/ | domínio não existe mais (sem DNS) |
 
 ## Fontes usadas
 
