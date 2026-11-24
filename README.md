@@ -364,7 +364,8 @@ que só funciona **enquanto o PC estiver ligado, com os containers e o túnel ro
 # antes de compartilhar: troque a senha do ADMIN (a padrão está neste README)
 pnpm trocar-senha admin@orcestra.com.br
 # abrir o túnel (grava o PID e mostra o link)
-setsid nohup ~/.local/bin/cloudflared tunnel --no-autoupdate --url http://localhost:3000 > /tmp/cloudflared.log 2>&1 < /dev/null & echo $! > /tmp/cloudflared.pid
+setsid nohup ~/.local/bin/cloudflared tunnel --no-autoupdate --url http://localhost:3000 > /tmp/cloudflared.log 2>&1 < /dev/null &
+sleep 5; pgrep -x cloudflared > /tmp/cloudflared.pid   # o setsid troca o PID: grava o do cloudflared
 grep -oE 'https://[a-z0-9-]+\.trycloudflare\.com' /tmp/cloudflared.log | head -1
 # fechar o túnel
 kill "$(cat /tmp/cloudflared.pid)"
