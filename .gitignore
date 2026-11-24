@@ -12,3 +12,9 @@ data/cache
 backups
 .claude/settings.local.json
 orcestra-prospect-codigo.zip
+
+# Instruções/prompts de IA (ficam só na máquina local, fora do GitHub)
+CLAUDE.md
+.claude/
+PROMPT-*.md
+docs/brief-agentes.md

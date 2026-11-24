@@ -1,7 +1,7 @@
 # Base de Empresas Juniores
 
 Resumo dos totais, fontes e lacunas: `data/RELATORIO.md` (ler sob demanda; é curto).
-Dados brutos: `data/ejs.json` e `data/ejs.csv` são grandes e estão bloqueados para leitura pelo `.claude/settings.json`. Para consultar, use o banco ou o script de coleta.
+Dados brutos: `data/ejs.json` e `data/ejs.csv` são grandes. Para consultar, use o banco ou o script de coleta.
 
 ## Pipeline (`scripts/coleta/src/`)
 

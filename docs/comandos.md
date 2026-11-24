@@ -2,18 +2,18 @@
 
 Todos os comandos são rodados na raiz do repo, salvo indicação.
 
-## Docker (nesta máquina, sempre com `sg docker -c`)
+## Docker
 
-Nesta máquina o Docker exige `sg docker -c` em cada chamada:
+Se o seu usuário não estiver no grupo `docker`, prefixe cada comando com `sg docker -c "..."`:
 
 ```bash
-sg docker -c "docker compose up -d postgres redis"
-sg docker -c "docker compose up -d --build"          # stack completa (api, web, postgres, redis)
-sg docker -c "docker compose ps"
-sg docker -c "docker compose logs api --tail 100"
-sg docker -c "docker compose logs api | grep -i esqueci"   # link de redefinição de senha
-sg docker -c "docker compose exec api pnpm db:seed"
-sg docker -c "docker compose down"                    # sem -v: preserva volumes (pgdata, redisdata)
+docker compose up -d postgres redis
+docker compose up -d --build          # stack completa (api, web, postgres, redis)
+docker compose ps
+docker compose logs api --tail 100
+docker compose logs api | grep -i esqueci   # link de redefinição de senha
+docker compose exec api pnpm db:seed
+docker compose down                    # sem -v: preserva volumes (pgdata, redisdata)
 ```
 
 Nunca use `docker compose down -v` sem backup: apaga o volume do Postgres.
@@ -23,7 +23,7 @@ Nunca use `docker compose down -v` sem backup: apaga o volume do Postgres.
 ```bash
 cp .env.example .env            # uma vez; ajuste JWT_ACCESS_SECRET e ADMIN_*
 pnpm install
-sg docker -c "docker compose up -d postgres redis"
+docker compose up -d postgres redis
 pnpm db:migrate                 # prisma migrate dev
 pnpm db:seed
 pnpm dev                        # compila shared e sobe API :3001 + web :3000 (watch)

@@ -1,7 +1,7 @@
 # Paleta da Orc'estra Gamificação
 
 Fonte: logo e amostras de cor enviadas pelo usuário em 22/11/2026 (arquivos nesta pasta). Valores HEX extraídos dos pixels.
-O agente `designer-ui` usa este arquivo como fonte da verdade e não inventa cores da marca.
+Este arquivo é a fonte da verdade das cores da marca (não inventar cores fora dele).
 
 | Papel        | HEX       | Observação |
 |--------------|-----------|------------|
