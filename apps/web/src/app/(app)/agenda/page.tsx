@@ -1,15 +1,17 @@
 'use client';
 import { useState } from 'react';
 import Link from 'next/link';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { BellRing, CalendarClock, Check, Loader2, MessageSquareText, Plus } from 'lucide-react';
 import { toast } from 'sonner';
-import { ORIGEM_TAREFA_LABEL } from '@orcestra/shared';
+import { ORIGEM_TAREFA_LABEL, type FaseTarefa } from '@orcestra/shared';
 import { MensagemDialog } from '@/components/cadencias/mensagem-dialog';
 import { useOpcoesResponsaveis } from '@/components/ej/use-opcoes';
 import { PrioridadesSemana } from '@/components/score/prioridades-semana';
 import { PageHeader } from '@/components/page-header';
-import { AdiarDataDialog, invalidarTarefas, NovaTarefaDialog } from '@/components/tarefas/tarefa-dialogs';
+import { CalendarioTarefas, dataUtcIso, hojeAgenda, mesAgenda } from '@/components/tarefas/calendario-tarefas';
+import { KanbanTarefas, type FaseNovaTarefa } from '@/components/tarefas/kanban-tarefas';
+import { AdiarDataDialog, invalidarTarefas, TarefaDialog } from '@/components/tarefas/tarefa-dialogs';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -30,7 +32,7 @@ import {
 import { Skeleton } from '@/components/ui/skeleton';
 import { api, ApiError } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
-import type { Agenda, Tarefa } from '@/lib/tipos-funil';
+import type { Agenda, Tarefa, TarefaAgenda } from '@/lib/tipos-funil';
 
 const dataBr = new Intl.DateTimeFormat('pt-BR', {
   weekday: 'short',
@@ -81,7 +83,7 @@ function LinhaTarefa({
         <p className="text-sm font-medium break-words">{t.titulo}</p>
         <p className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
           <span className={atrasada ? 'font-medium text-destructive' : undefined}>
-            {dataBr.format(new Date(t.vencimento))}
+            {t.vencimento ? dataBr.format(new Date(t.vencimento)) : 'Sem data'}
           </span>
           <Badge variant="secondary">{ORIGEM_TAREFA_LABEL[t.origem]}</Badge>
           {t.adiadaVezes > 0 && <span>adiada {t.adiadaVezes}x</span>}
@@ -182,7 +184,10 @@ export default function AgendaPage() {
   const gestor = temPapel('ADMIN', 'GESTOR');
   const admin = temPapel('ADMIN');
   const [alvo, setAlvo] = useState<string>('');
-  const [nova, setNova] = useState(false);
+  const [visao, setVisao] = useState('calendario');
+  const [mes, setMes] = useState(() => dataUtcIso(mesAgenda(hojeAgenda())));
+  const [nova, setNova] = useState<{ data?: string; fase?: FaseNovaTarefa } | null>(null);
+  const [tarefaAberta, setTarefaAberta] = useState<TarefaAgenda | null>(null);
   const [adiarId, setAdiarId] = useState<string | null>(null);
   const [mensagemId, setMensagemId] = useState<string | null>(null);
   const resp = useOpcoesResponsaveis(gestor);
@@ -192,6 +197,33 @@ export default function AgendaPage() {
     queryKey: ['agenda', responsavelId ?? 'eu'],
     queryFn: () =>
       api<Agenda>(`/tarefas/agenda${responsavelId ? `?responsavelId=${responsavelId}` : ''}`),
+    enabled: visao === 'lista',
+  });
+
+  const intervalo = visao === 'calendario' ? mes : null;
+  const painel = useInfiniteQuery({
+    queryKey: ['agenda-painel', responsavelId ?? 'eu', intervalo],
+    queryFn: ({ pageParam, signal }) => {
+      const params = new URLSearchParams({ page: String(pageParam), pageSize: '100' });
+      if (responsavelId) params.set('responsavelId', responsavelId);
+      if (intervalo) {
+        params.set('inicio', intervalo);
+        params.set('fim', dataUtcIso(mesAgenda(intervalo, 1)));
+      }
+      return api<{ items: TarefaAgenda[]; temMais: boolean }>(`/tarefas/painel?${params}`, { signal });
+    },
+    initialPageParam: 1,
+    getNextPageParam: (ultima, paginas) => ultima.temMais ? paginas.length + 1 : undefined,
+    enabled: visao !== 'lista',
+  });
+  const mover = useMutation({
+    mutationFn: ({ id, fase }: { id: string; fase: FaseTarefa }) =>
+      api(`/tarefas/${id}/fase`, { method: 'PATCH', json: { fase } }),
+    onSuccess: () => invalidarTarefas(qc),
+    onError: (e) => {
+      invalidarTarefas(qc);
+      toast.error(e instanceof ApiError ? e.message : 'Erro ao mover a tarefa');
+    },
   });
 
   const alertas = useMutation({
@@ -211,12 +243,13 @@ export default function AgendaPage() {
   const outros = (resp.data?.usuarios ?? []).filter((u) => u.id !== usuario?.id);
   const outroUsuario = !!responsavelId;
   const total = q.data ? q.data.atrasadas.length + q.data.hoje.length + q.data.proximos7Dias.length : 0;
+  const tarefas = painel.data?.pages.flatMap((pagina) => pagina.items) ?? [];
+  const selecionada = tarefas.find((t) => t.id === tarefaAberta?.id) ?? tarefaAberta;
 
   return (
-    <div className="mx-auto max-w-4xl">
+    <div className="mx-auto max-w-7xl">
       <PageHeader
         titulo="Minha agenda"
-        descricao="Tarefas atrasadas, de hoje e dos próximos 7 dias."
         acoes={
           <>
             {admin && (
@@ -230,7 +263,9 @@ export default function AgendaPage() {
                 Gerar alertas agora
               </Button>
             )}
-            <Button size="sm" onClick={() => setNova(true)}>
+            <Button size="sm" onClick={() => setNova(visao === 'kanban' ? {} : {
+              data: visao === 'calendario' && !hojeAgenda().startsWith(mes.slice(0, 7)) ? mes : hojeAgenda(),
+            })}>
               <Plus /> Nova tarefa
             </Button>
           </>
@@ -256,11 +291,49 @@ export default function AgendaPage() {
         </div>
       )}
 
-      <div className="mb-4">
-        <PrioridadesSemana responsavelId={responsavelId} />
+      <div role="group" aria-label="Visualização da agenda" className="mb-4 flex flex-wrap gap-2">
+        {[
+          ['calendario', 'Calendário'],
+          ['kanban', 'Kanban'],
+          ['lista', 'Lista'],
+        ].map(([valor, rotulo]) => (
+          <Button key={valor} size="sm" aria-pressed={visao === valor}
+            variant={visao === valor ? 'default' : 'outline'} onClick={() => setVisao(valor)}>
+            {rotulo}
+          </Button>
+        ))}
       </div>
 
-      {q.isLoading ? (
+      {visao === 'lista' && <div className="mb-4">
+        <PrioridadesSemana responsavelId={responsavelId} />
+      </div>}
+
+      {visao !== 'lista' ? (
+        <>
+          {painel.isError && (
+            <div role="alert" className="mb-3 flex items-center gap-2 text-sm text-destructive">
+              Erro ao carregar tarefas.
+              <Button size="sm" variant="outline" onClick={() => void painel.refetch()}>Tentar novamente</Button>
+            </div>
+          )}
+          {visao === 'calendario' ? (
+            <CalendarioTarefas mes={mes} tarefas={tarefas} carregando={painel.isPending} onMes={setMes}
+              onCriar={(data) => setNova({ data })} onAbrir={setTarefaAberta} />
+          ) : painel.isPending ? (
+            <Skeleton className="h-48 w-full" aria-label="Carregando tarefas" />
+          ) : (
+            <KanbanTarefas tarefas={tarefas} onAbrir={setTarefaAberta}
+              onCriar={(fase) => setNova({ fase })} movendo={mover.isPending}
+              onMover={(id, fase) => mover.mutate({ id, fase })} />
+          )}
+          {painel.hasNextPage && (
+            <Button size="sm" variant="outline" className="mt-3" disabled={painel.isFetchingNextPage}
+              onClick={() => void painel.fetchNextPage()}>
+              {painel.isFetchingNextPage ? 'Carregando…' : 'Carregar mais tarefas'}
+            </Button>
+          )}
+        </>
+      ) : q.isLoading ? (
         <div className="grid gap-4" aria-busy="true" aria-label="Carregando agenda">
           <Skeleton className="h-28 w-full" />
           <Skeleton className="h-28 w-full" />
@@ -309,11 +382,16 @@ export default function AgendaPage() {
         </div>
       )}
 
-      <NovaTarefaDialog
-        aberto={nova}
-        onFechar={() => setNova(false)}
+      <TarefaDialog
+        aberto={!!nova || !!selecionada}
+        onFechar={() => { setNova(null); setTarefaAberta(null); }}
         responsavelPadrao={responsavelId ?? usuario?.id ?? ''}
         podeEscolherResponsavel={gestor}
+        dataPadrao={nova?.data}
+        faseInicial={nova?.fase}
+        tarefa={selecionada ?? undefined}
+        onAdiar={(id) => { setTarefaAberta(null); setAdiarId(id); }}
+        onMensagem={(id) => { setTarefaAberta(null); setMensagemId(id); }}
       />
       <AdiarDataDialog tarefaId={adiarId} onFechar={() => setAdiarId(null)} />
       <MensagemDialog tarefaId={mensagemId} onFechar={() => setMensagemId(null)} />

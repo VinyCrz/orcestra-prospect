@@ -3,7 +3,16 @@ import { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
-import { criarTarefaSchema } from '@orcestra/shared';
+import {
+  atualizarTarefaSchema,
+  criarTarefaSchema,
+  FASE_TAREFA_LABEL,
+  FASES_TAREFA,
+  PRIORIDADE_TAREFA_LABEL,
+  PRIORIDADES_TAREFA,
+  type FaseTarefa,
+  type PrioridadeTarefa,
+} from '@orcestra/shared';
 import { Campo } from '@/components/form/campo';
 import { useOpcoesResponsaveis } from '@/components/ej/use-opcoes';
 import { hojeIso } from '@/components/funil/status-dialog';
@@ -27,31 +36,48 @@ import {
 import { Textarea } from '@/components/ui/textarea';
 import { api, ApiError } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
+import type { TarefaAgenda } from '@/lib/tipos-funil';
 
 export function invalidarTarefas(qc: ReturnType<typeof useQueryClient>) {
-  for (const k of ['agenda', 'tarefas-contador', 'timeline'])
+  for (const k of ['agenda', 'agenda-painel', 'tarefas-contador', 'timeline'])
     void qc.invalidateQueries({ queryKey: [k] });
 }
 
-export function NovaTarefaDialog({
+export function TarefaDialog({
   aberto,
   onFechar,
   responsavelPadrao,
   podeEscolherResponsavel,
+  dataPadrao,
+  faseInicial,
+  tarefa,
+  onMensagem,
+  onAdiar,
 }: {
   aberto: boolean;
   onFechar: () => void;
   responsavelPadrao: string;
   podeEscolherResponsavel: boolean;
+  dataPadrao?: string;
+  faseInicial?: 'IDEIA' | 'NAO_INICIADA' | 'EM_ANDAMENTO';
+  tarefa?: TarefaAgenda;
+  onMensagem: (id: string) => void;
+  onAdiar: (id: string) => void;
 }) {
   return (
     <Dialog open={aberto} onOpenChange={(o) => !o && onFechar()}>
-      <DialogContent>
+      <DialogContent className="max-h-[90dvh] overflow-y-auto">
         {aberto && (
-          <NovaTarefa
+          <FormularioTarefa
+            key={tarefa?.id ?? 'nova'}
             onFechar={onFechar}
             responsavelPadrao={responsavelPadrao}
             podeEscolherResponsavel={podeEscolherResponsavel}
+            dataPadrao={dataPadrao}
+            faseInicial={faseInicial}
+            tarefa={tarefa}
+            onMensagem={onMensagem}
+            onAdiar={onAdiar}
           />
         )}
       </DialogContent>
@@ -59,32 +85,64 @@ export function NovaTarefaDialog({
   );
 }
 
-function NovaTarefa({
+const dataCivil = new Intl.DateTimeFormat('en-CA', {
+  timeZone: 'America/Sao_Paulo', year: 'numeric', month: '2-digit', day: '2-digit',
+});
+
+function FormularioTarefa({
   onFechar,
   responsavelPadrao,
   podeEscolherResponsavel,
+  dataPadrao,
+  faseInicial = 'NAO_INICIADA',
+  tarefa,
+  onMensagem,
+  onAdiar,
 }: {
   onFechar: () => void;
   responsavelPadrao: string;
   podeEscolherResponsavel: boolean;
+  dataPadrao?: string;
+  faseInicial?: 'IDEIA' | 'NAO_INICIADA' | 'EM_ANDAMENTO';
+  tarefa?: TarefaAgenda;
+  onMensagem: (id: string) => void;
+  onAdiar: (id: string) => void;
 }) {
   const qc = useQueryClient();
   const { usuario } = useAuth();
-  const resp = useOpcoesResponsaveis(podeEscolherResponsavel);
-  const [titulo, setTitulo] = useState('');
-  const [descricao, setDescricao] = useState('');
-  const [vencimento, setVencimento] = useState(hojeIso());
-  const [responsavelId, setResponsavelId] = useState(responsavelPadrao);
+  const editavel = tarefa?.podeEditar ?? true;
+  const resp = useOpcoesResponsaveis(editavel);
+  const [titulo, setTitulo] = useState(tarefa?.titulo ?? '');
+  const [descricao, setDescricao] = useState(tarefa?.descricao ?? '');
+  const [vencimento, setVencimento] = useState(
+    tarefa ? (tarefa.vencimento ? dataCivil.format(new Date(tarefa.vencimento)) : '') : (dataPadrao ?? ''),
+  );
+  const [responsavelId, setResponsavelId] = useState(tarefa?.responsavelId ?? responsavelPadrao);
+  const [prioridade, setPrioridade] = useState<PrioridadeTarefa>(tarefa?.prioridade ?? 'MEDIA');
+  const [colaboradorIds, setColaboradorIds] = useState(tarefa?.colaboradores.map((c) => c.id) ?? []);
+  const [novaSubtarefa, setNovaSubtarefa] = useState('');
   const [erros, setErros] = useState<Record<string, string>>({});
 
   const m = useMutation({
-    mutationFn: (corpo: Record<string, unknown>) => api('/tarefas', { method: 'POST', json: corpo }),
+    mutationFn: (corpo: Record<string, unknown>) =>
+      api(tarefa ? `/tarefas/${tarefa.id}` : '/tarefas', { method: tarefa ? 'PATCH' : 'POST', json: corpo }),
     onSuccess: () => {
       invalidarTarefas(qc);
-      toast.success('Tarefa criada');
+      toast.success(tarefa ? 'Tarefa atualizada' : 'Tarefa criada');
       onFechar();
     },
-    onError: (e) => toast.error(e instanceof ApiError ? e.message : 'Erro ao criar a tarefa'),
+    onError: (e) => toast.error(e instanceof ApiError ? e.message : 'Erro ao salvar a tarefa'),
+  });
+
+  const atualizarDetalhe = useMutation({
+    mutationFn: ({ rota, method, json }: { rota: string; method: 'POST' | 'PATCH'; json: object }) =>
+      api(`/tarefas/${tarefa?.id}/${rota}`, { method, json }),
+    onSuccess: async (_, operacao) => {
+      if (operacao.method === 'POST') setNovaSubtarefa('');
+      await qc.invalidateQueries({ queryKey: ['agenda-painel'] });
+      if (operacao.rota === 'fase') invalidarTarefas(qc);
+    },
+    onError: (e) => toast.error(e instanceof ApiError ? e.message : 'Erro ao atualizar a tarefa'),
   });
 
   const outros = (resp.data?.usuarios ?? []).filter((u) => u.id !== usuario?.id);
@@ -94,10 +152,17 @@ function NovaTarefa({
     const corpo = {
       titulo,
       descricao: descricao || null,
-      vencimento,
+      ...(!tarefa || vencimento !== (tarefa.vencimento ? dataCivil.format(new Date(tarefa.vencimento)) : '')
+        ? { vencimento: vencimento || null }
+        : {}),
+      prioridade,
+      ...(!tarefa ? { fase: faseInicial } : {}),
+      ...(!tarefa || colaboradorIds.join(',') !== tarefa.colaboradores.map((c) => c.id).join(',')
+        ? { colaboradorIds }
+        : {}),
       ...(podeEscolherResponsavel && responsavelId ? { responsavelId } : {}),
     };
-    const r = criarTarefaSchema.safeParse(corpo);
+    const r = (tarefa ? atualizarTarefaSchema : criarTarefaSchema).safeParse(corpo);
     if (!r.success) {
       const mapa: Record<string, string> = {};
       for (const i of r.error.issues) mapa[String(i.path[0])] = i.message;
@@ -111,9 +176,12 @@ function NovaTarefa({
   return (
     <>
       <DialogHeader>
-        <DialogTitle>Nova tarefa</DialogTitle>
-        <DialogDescription>Crie um lembrete manual na agenda.</DialogDescription>
+        <DialogTitle>{tarefa?.titulo ?? 'Nova tarefa'}</DialogTitle>
+        <DialogDescription>
+          {tarefa ? 'Detalhes da tarefa na Minha Agenda.' : 'A tarefa fica disponível no Calendário e no Kanban.'}
+        </DialogDescription>
       </DialogHeader>
+      {editavel ? (
       <form id="form-tarefa" onSubmit={enviar} className="grid gap-4" noValidate>
         <Campo id="tar-titulo" label="Título" erro={erros.titulo}>
           <Input
@@ -128,7 +196,6 @@ function NovaTarefa({
           <Input
             id="tar-data"
             type="date"
-            min={hojeIso()}
             value={vencimento}
             onChange={(e) => setVencimento(e.target.value)}
           />
@@ -141,9 +208,12 @@ function NovaTarefa({
             onChange={(e) => setDescricao(e.target.value)}
           />
         </Campo>
-        {podeEscolherResponsavel && (
+        {podeEscolherResponsavel ? (
           <Campo id="tar-resp" label="Responsável">
-            <Select value={responsavelId} onValueChange={setResponsavelId}>
+            <Select value={responsavelId} onValueChange={(id) => {
+              setResponsavelId(id);
+              setColaboradorIds((ids) => ids.filter((item) => item !== id));
+            }}>
               <SelectTrigger id="tar-resp">
                 <SelectValue />
               </SelectTrigger>
@@ -157,16 +227,117 @@ function NovaTarefa({
               </SelectContent>
             </Select>
           </Campo>
+        ) : (
+          <p className="text-sm">Responsável: {tarefa?.responsavel.nome ?? usuario?.nome}</p>
         )}
+        <Campo id="tar-prioridade" label="Prioridade">
+          <Select value={prioridade} onValueChange={(v) => setPrioridade(v as PrioridadeTarefa)}>
+            <SelectTrigger id="tar-prioridade"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              {PRIORIDADES_TAREFA.map((p) => (
+                <SelectItem key={p} value={p}>{PRIORIDADE_TAREFA_LABEL[p]}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </Campo>
+        <fieldset className="grid gap-1.5">
+          <legend className="mb-1 text-sm font-medium">Colaboradores</legend>
+          {resp.isError && <p className="text-sm text-destructive">Não foi possível carregar os usuários.</p>}
+          {resp.isPending && <p className="text-sm text-muted-foreground">Carregando usuários…</p>}
+          {resp.isSuccess && (
+            <div className="grid max-h-32 gap-2 overflow-y-auto rounded-md border p-2">
+              {resp.data.usuarios.filter((u) => u.id !== responsavelId).map((u) => (
+                <label key={u.id} className="flex items-center gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={colaboradorIds.includes(u.id)}
+                    onChange={(e) => setColaboradorIds((ids) =>
+                      e.target.checked ? [...ids, u.id] : ids.filter((id) => id !== u.id),
+                    )}
+                  />
+                  {u.nome}
+                </label>
+              ))}
+              {!resp.data.usuarios.some((u) => u.id !== responsavelId) && (
+                <p className="text-sm text-muted-foreground">Nenhum outro usuário ativo.</p>
+              )}
+            </div>
+          )}
+        </fieldset>
       </form>
+      ) : tarefa && (
+        <div className="grid gap-2 text-sm">
+          {tarefa.descricao && <p className="whitespace-pre-wrap">{tarefa.descricao}</p>}
+          <p>Vencimento: {vencimento ? vencimento.split('-').reverse().join('/') : 'Sem data'}</p>
+          <p>Responsável: {tarefa.responsavel.nome}</p>
+          <p>Prioridade: {PRIORIDADE_TAREFA_LABEL[tarefa.prioridade]}</p>
+          <p>Fase: {FASE_TAREFA_LABEL[tarefa.fase]}</p>
+          <p>Colaboradores: {tarefa.colaboradores.map((c) => c.nome).join(', ') || 'Nenhum'}</p>
+        </div>
+      )}
+      {tarefa && (
+        <>
+          {editavel && (
+            <Campo id="tar-fase" label="Fase">
+              <Select
+                value={tarefa.fase}
+                disabled={atualizarDetalhe.isPending}
+                onValueChange={(fase: FaseTarefa) => atualizarDetalhe.mutate({ rota: 'fase', method: 'PATCH', json: { fase } })}
+              >
+                <SelectTrigger id="tar-fase"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {FASES_TAREFA.map((fase) => <SelectItem key={fase} value={fase}>{FASE_TAREFA_LABEL[fase]}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </Campo>
+          )}
+          <section aria-labelledby="titulo-subtarefas" className="grid gap-2 border-t pt-3">
+            <h3 id="titulo-subtarefas" className="text-sm font-medium">Subtarefas</h3>
+            {tarefa.subtarefas.map((s) => (
+              <label key={s.id} className="flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={s.concluida}
+                  disabled={atualizarDetalhe.isPending}
+                  onChange={(e) => atualizarDetalhe.mutate({
+                    rota: `subtarefas/${s.id}`, method: 'PATCH', json: { concluida: e.target.checked },
+                  })}
+                />
+                <span className={s.concluida ? 'text-muted-foreground line-through' : undefined}>{s.titulo}</span>
+              </label>
+            ))}
+            <form className="flex gap-2" onSubmit={(e) => {
+              e.preventDefault();
+              atualizarDetalhe.mutate({ rota: 'subtarefas', method: 'POST', json: { titulo: novaSubtarefa } });
+            }}>
+              <Input aria-label="Nova subtarefa" placeholder="Nova subtarefa" maxLength={200}
+                value={novaSubtarefa} onChange={(e) => setNovaSubtarefa(e.target.value)} />
+              <Button type="submit" size="sm" variant="outline"
+                disabled={novaSubtarefa.trim().length < 2 || atualizarDetalhe.isPending}>Adicionar</Button>
+            </form>
+          </section>
+          {editavel && !tarefa.concluida && (
+            <div className="flex flex-wrap gap-2">
+              {tarefa.origem === 'CADENCIA' && (
+                <Button type="button" size="sm" variant="outline" onClick={() => onMensagem(tarefa.id)}>
+                  Gerar mensagem
+                </Button>
+              )}
+              <Button type="button" size="sm" variant="outline" onClick={() => onAdiar(tarefa.id)}>Adiar</Button>
+            </div>
+          )}
+        </>
+      )}
       <DialogFooter>
         <Button type="button" variant="outline" onClick={onFechar}>
-          Cancelar
+          {tarefa ? 'Fechar' : 'Cancelar'}
         </Button>
-        <Button type="submit" form="form-tarefa" disabled={m.isPending}>
-          {m.isPending && <Loader2 className="animate-spin" />}
-          Criar tarefa
-        </Button>
+        {editavel && (
+          <Button type="submit" form="form-tarefa" disabled={m.isPending}>
+            {m.isPending && <Loader2 className="animate-spin" />}
+            {tarefa ? 'Salvar alterações' : 'Criar tarefa'}
+          </Button>
+        )}
       </DialogFooter>
     </>
   );

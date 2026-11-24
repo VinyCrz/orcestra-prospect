@@ -11,15 +11,21 @@ import {
 import {
   adiarTarefaSchema,
   agendaQuerySchema,
+  agendaPainelQuerySchema,
+  atualizarSubtarefaSchema,
   atualizarTarefaSchema,
   criarTarefaSchema,
+  criarSubtarefaSchema,
+  moverTarefaSchema,
   registrarEnvioSchema,
   listarTarefasQuerySchema,
   ORIGENS_TAREFA,
   type AdiarTarefaInput,
   type AgendaQuery,
+  type AgendaPainelQuery,
   type AtualizarTarefaInput,
   type CriarTarefaInput,
+  type FaseTarefa,
   type RegistrarEnvioInput,
   type ListarTarefasQuery,
 } from '@orcestra/shared';
@@ -32,7 +38,9 @@ import { TarefasService } from './tarefas.service';
 class TarefaDto {
   @ApiProperty() titulo: string;
   @ApiPropertyOptional() descricao?: string | null;
-  @ApiProperty({ description: 'ISO ou AAAA-MM-DD (início do dia em America/Sao_Paulo)' }) vencimento: string;
+  @ApiProperty({ nullable: true, description: 'ISO ou AAAA-MM-DD (início do dia em America/Sao_Paulo)' }) vencimento: string | null;
+  @ApiPropertyOptional({ enum: ['ALTA', 'MEDIA', 'BAIXA'] }) prioridade?: string;
+  @ApiPropertyOptional({ type: [String] }) colaboradorIds?: string[];
   @ApiPropertyOptional({ description: 'Padrão: o próprio usuário. Outro usuário: só GESTOR/ADMIN' })
   responsavelId?: string;
   @ApiPropertyOptional() empresaJuniorId?: string | null;
@@ -70,6 +78,15 @@ export class TarefasController {
   @ApiOperation({ summary: 'Contadores do menu: `{atrasadas, hoje}` do usuário logado.' })
   contador(@UsuarioAtual() u: UsuarioAutenticado) {
     return this.service.contador(u);
+  }
+
+  @Get('painel')
+  @ApiOperation({ summary: 'Tarefas da agenda, incluindo colaborações e tarefas encerradas.' })
+  painel(
+    @Query(new ZodValidationPipe(agendaPainelQuerySchema)) q: AgendaPainelQuery,
+    @UsuarioAtual() u: UsuarioAutenticado,
+  ) {
+    return this.service.painel(q, u);
   }
 
   @Get()
@@ -139,6 +156,36 @@ export class TarefasController {
   @ApiOperation({ summary: 'Conclui a tarefa (idempotente). Responsável, criador, GESTOR ou ADMIN.' })
   concluir(@Param('id') id: string, @UsuarioAtual() u: UsuarioAutenticado) {
     return this.service.concluir(id, u);
+  }
+
+  @Patch(':id/fase')
+  @HttpCode(204)
+  mover(
+    @Param('id') id: string,
+    @Body(new ZodValidationPipe(moverTarefaSchema)) body: { fase: FaseTarefa },
+    @UsuarioAtual() u: UsuarioAutenticado,
+  ) {
+    return this.service.mover(id, body.fase, u);
+  }
+
+  @Post(':id/subtarefas')
+  criarSubtarefa(
+    @Param('id') id: string,
+    @Body(new ZodValidationPipe(criarSubtarefaSchema)) body: { titulo: string },
+    @UsuarioAtual() u: UsuarioAutenticado,
+  ) {
+    return this.service.criarSubtarefa(id, body.titulo, u);
+  }
+
+  @Patch(':id/subtarefas/:subtarefaId')
+  @HttpCode(204)
+  atualizarSubtarefa(
+    @Param('id') id: string,
+    @Param('subtarefaId') subtarefaId: string,
+    @Body(new ZodValidationPipe(atualizarSubtarefaSchema)) body: { concluida: boolean },
+    @UsuarioAtual() u: UsuarioAutenticado,
+  ) {
+    return this.service.concluirSubtarefa(id, subtarefaId, body.concluida, u);
   }
 
   @Patch(':id/reabrir')

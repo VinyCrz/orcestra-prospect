@@ -103,6 +103,7 @@ test('inscrever, gerar mensagem com nome da EJ e marcar como enviada', async ({ 
   await inscrever(page, ejs[0].id);
 
   await page.goto('/agenda');
+  await page.getByRole('button', { name: 'Lista', exact: true }).click();
   const tarefa = page.getByTestId('tarefa').filter({ hasText: ejs[0].nome }).first();
   await expect(tarefa).toBeVisible();
   await tarefa.getByRole('button', { name: 'Gerar mensagem' }).click();
@@ -123,6 +124,7 @@ test('contato em opt-out bloqueia a mensagem', async ({ page }) => {
   psql(`update contatos set "optOut" = true, "optOutEm" = now(), "optOutMotivo" = 'QA E5' where id = '${ejs[1].contatoId}';`);
 
   await page.goto('/agenda');
+  await page.getByRole('button', { name: 'Lista', exact: true }).click();
   const tarefa = page.getByTestId('tarefa').filter({ hasText: ejs[1].nome }).first();
   await expect(tarefa).toBeVisible();
   await tarefa.getByRole('button', { name: 'Gerar mensagem' }).click();

@@ -125,10 +125,35 @@ export type TipoTimeline = (typeof TIPOS_TIMELINE)[number];
 
 // --- Tarefas -----------------------------------------------------------------------------------
 
+export const FASES_TAREFA = ['IDEIA', 'NAO_INICIADA', 'EM_ANDAMENTO', 'REALIZADA', 'NAO_REALIZADA'] as const;
+export type FaseTarefa = (typeof FASES_TAREFA)[number];
+export const FASE_TAREFA_LABEL: Record<FaseTarefa, string> = {
+  IDEIA: 'Ideias',
+  NAO_INICIADA: 'Não iniciadas',
+  EM_ANDAMENTO: 'Em andamento',
+  REALIZADA: 'Realizadas',
+  NAO_REALIZADA: 'Não realizadas',
+};
+
+export const PRIORIDADES_TAREFA = ['ALTA', 'MEDIA', 'BAIXA'] as const;
+export type PrioridadeTarefa = (typeof PRIORIDADES_TAREFA)[number];
+export const PRIORIDADE_TAREFA_LABEL: Record<PrioridadeTarefa, string> = {
+  ALTA: 'Alta',
+  MEDIA: 'Média',
+  BAIXA: 'Baixa',
+};
+
+const preferenciasTarefa = {
+  prioridade: z.enum(PRIORIDADES_TAREFA).optional(),
+  colaboradorIds: z.array(idStr).max(50).optional(),
+};
+
 export const criarTarefaSchema = z.object({
+  ...preferenciasTarefa,
   titulo: z.string().trim().min(2, 'Informe o título').max(200),
   descricao: textoOpc(2000),
-  vencimento: dataOuDataHora,
+  vencimento: dataOuDataHora.nullable(),
+  fase: z.enum(['IDEIA', 'NAO_INICIADA', 'EM_ANDAMENTO']).optional(),
   /** padrão: o próprio usuário; só GESTOR/ADMIN atribuem a outro */
   responsavelId: idStr.optional(),
   empresaJuniorId: idStr.nullish(),
@@ -138,9 +163,10 @@ export type CriarTarefaInput = z.infer<typeof criarTarefaSchema>;
 
 export const atualizarTarefaSchema = z
   .object({
+    ...preferenciasTarefa,
     titulo: z.string().trim().min(2).max(200).optional(),
     descricao: textoOpc(2000),
-    vencimento: dataOuDataHora.optional(),
+    vencimento: dataOuDataHora.nullish(),
     responsavelId: idStr.optional(),
   })
   .refine((v) => Object.values(v).some((x) => x !== undefined), 'Informe ao menos um campo');
@@ -160,6 +186,23 @@ export type ListarTarefasQuery = z.infer<typeof listarTarefasQuerySchema>;
 
 export const agendaQuerySchema = z.object({ responsavelId: idStr.optional() });
 export type AgendaQuery = z.infer<typeof agendaQuerySchema>;
+
+export const agendaPainelQuerySchema = z
+  .object({
+    ...pagina,
+    responsavelId: idStr.optional(),
+    inicio: dataOuDataHora.optional(),
+    fim: dataOuDataHora.optional(),
+  })
+  .refine(
+    ({ inicio, fim }) => (!inicio && !fim) || !!(inicio && fim && inicio < fim),
+    'Informe um intervalo de datas válido',
+  );
+export type AgendaPainelQuery = z.infer<typeof agendaPainelQuerySchema>;
+
+export const moverTarefaSchema = z.object({ fase: z.enum(FASES_TAREFA) });
+export const criarSubtarefaSchema = z.object({ titulo: z.string().trim().min(2).max(200) });
+export const atualizarSubtarefaSchema = z.object({ concluida: z.boolean() });
 
 export const adiarTarefaSchema = z
   .object({

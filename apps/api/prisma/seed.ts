@@ -239,6 +239,67 @@ const TEMPLATES: { chave: string; nome: string; canal: Canal; assunto?: string; 
         'mais indicada, fico grato pela indicação.\n\n' +
         `Abraço,\n${ASSINATURA}`,
     },
+    {
+      chave: 'gamificacao-whatsapp-pessoa-certa',
+      nome: 'Gamificação — encontrar a pessoa certa (WhatsApp)',
+      canal: 'WHATSAPP',
+      corpo:
+        "Oi! Sou {{nome_sdr}}, da Orc'estra Gamificação. Queria conversar com a {{nome_ej}} " +
+        'sobre engajamento dos membros. Vocês podem me indicar quem cuida desse tema na equipe?',
+    },
+    {
+      chave: 'gamificacao-whatsapp-retomada',
+      nome: 'Gamificação — retomada sem resposta (WhatsApp)',
+      canal: 'WHATSAPP',
+      corpo:
+        'Oi, {{nome_contato}}! Passando para retomar minha mensagem sobre engajamento dos membros ' +
+        'na {{nome_ej}}. Faz sentido conversar sobre isso neste mandato? Se o momento não for bom, tudo bem.',
+    },
+    {
+      chave: 'gamificacao-email-exemplo-pratico',
+      nome: 'Gamificação — exemplo prático (e-mail)',
+      canal: 'EMAIL',
+      assunto: 'Uma ideia para reconhecer as entregas na {{nome_ej}}',
+      corpo:
+        'Olá, {{nome_contato}},\n\n' +
+        "Sou {{nome_sdr}}, da Orc'estra Gamificação. Uma ideia para a {{nome_ej}} é combinar metas " +
+        'por área com momentos de reconhecimento pelas entregas ao longo do mandato. Por exemplo, ' +
+        'a equipe pode reservar alguns minutos na reunião mensal para reconhecer contribuições que ' +
+        'ajudaram outras áreas a avançar.\n\n' +
+        'Como vocês reconhecem essas contribuições hoje? Se fizer sentido, podemos conversar sobre ' +
+        'como adaptar a ideia à rotina de vocês.\n\n' +
+        `Abraço,\n${ASSINATURA}`,
+    },
+    {
+      chave: 'gamificacao-email-pos-reuniao',
+      nome: 'Gamificação — resumo pós-reunião (e-mail)',
+      canal: 'EMAIL',
+      assunto: '{{nome_ej}} e Orc’estra | Próximos passos',
+      corpo:
+        'Olá, {{nome_contato}},\n\n' +
+        'Obrigado pela conversa sobre a {{nome_ej}}. Retomo aqui os pontos que combinamos.\n\n' +
+        'Desafio discutido: [resuma o desafio].\n' +
+        'Próximo passo: [descreva a ação, quem ficou responsável e a data combinada].\n\n' +
+        'Ficou faltando algum ponto?\n\n' +
+        `Abraço,\n${ASSINATURA}`,
+    },
+    {
+      chave: 'gamificacao-linkedin-pos-conexao',
+      nome: 'Gamificação — após aceitar a conexão (LinkedIn)',
+      canal: 'LINKEDIN',
+      corpo:
+        'Oi, {{nome_contato}}! Obrigado por aceitar a conexão. Queria conhecer um pouco da rotina ' +
+        'da {{nome_ej}}. O que tem ajudado vocês a manter os membros engajados ao longo do mandato?',
+    },
+    {
+      chave: 'gamificacao-linkedin-publicacao',
+      nome: 'Gamificação — abordagem por publicação (LinkedIn)',
+      canal: 'LINKEDIN',
+      corpo:
+        'Oi, {{nome_contato}}! Vi a publicação da {{nome_ej}} sobre [tema da publicação] e me chamou ' +
+        'a atenção [cite um ponto concreto da publicação]. [Faça uma pergunta ligada ao ponto citado ' +
+        'e à participação dos membros].',
+    },
   ];
 
 const CADENCIA_INICIAL = {
@@ -285,7 +346,7 @@ function variaveisDe(...textos: (string | undefined)[]): string[] {
   return [...set];
 }
 
-async function seedCadencias() {
+async function seedTemplates() {
   const idsTemplate = new Map<string, string>();
   let criados = 0;
   for (const t of TEMPLATES) {
@@ -305,7 +366,11 @@ async function seedCadencias() {
     criados++;
   }
   console.log(`• Templates: ${criados} criados (${TEMPLATES.length - criados} já existiam).`);
+  return idsTemplate;
+}
 
+async function seedCadencias() {
+  const idsTemplate = await seedTemplates();
   const c = CADENCIA_INICIAL;
   const existe = await prisma.cadencia.findFirst({
     where: { OR: [{ chave: c.chave }, { nome: c.nome }] },
@@ -550,6 +615,10 @@ async function seedEjs(
 }
 
 async function main() {
+  if (process.argv.includes('--templates')) {
+    await seedTemplates();
+    return;
+  }
   console.log(`Seed — dados em ${DATA}`);
   await seedAdmin();
   await seedMotivosPerda();

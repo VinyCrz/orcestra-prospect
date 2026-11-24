@@ -174,6 +174,7 @@ model Usuario {
   interacoes            Interacao[]
   tarefasResponsavel    Tarefa[]                @relation("TarefaResponsavel")
   tarefasCriadas        Tarefa[]                @relation("TarefaCriador")
+  tarefasColaboracao    Tarefa[]                @relation("TarefaColaboradores")
   historicoStatus       HistoricoStatus[]
   cadencias             Cadencia[]
   templates             TemplateMensagem[]
@@ -515,11 +516,27 @@ model Interacao {
   @@map("interacoes")
 }
 
+enum FaseTarefa {
+  IDEIA
+  NAO_INICIADA
+  EM_ANDAMENTO
+  REALIZADA
+  NAO_REALIZADA
+}
+
+enum PrioridadeTarefa {
+  ALTA
+  MEDIA
+  BAIXA
+}
+
 model Tarefa {
   id                  String       @id @default(cuid())
   titulo              String
   descricao           String?
-  vencimento          DateTime
+  vencimento          DateTime?
+  fase                FaseTarefa @default(NAO_INICIADA)
+  prioridade          PrioridadeTarefa @default(MEDIA)
   concluida           Boolean      @default(false)
   concluidaEm         DateTime?
   /// cancelada (ex.: cadência encerrada): grava-se concluida = true + canceladaEm, então some da agenda
@@ -548,16 +565,31 @@ model Tarefa {
   /// SetNull: a inscrição não é apagada no fluxo normal (encerra-se); se for, a agenda/histórico fica
   inscricaoCadencia InscricaoCadencia? @relation(fields: [inscricaoCadenciaId], references: [id], onDelete: SetNull)
   interacao         Interacao?         @relation("TarefaDaInteracao")
+  colaboradores     Usuario[]          @relation("TarefaColaboradores")
+  subtarefas        Subtarefa[]
 
   /// no máximo uma tarefa por passo em cada inscrição (idempotência da geração; NULLs não colidem)
   @@unique([inscricaoCadenciaId, passoCadenciaId])
   /// "Minha agenda" (hoje/atrasadas/7 dias) e contador de atrasadas
   @@index([responsavelId, concluida, vencimento])
+  @@index([responsavelId, vencimento, id])
   /// tarefas pendentes de uma inscrição (encerrar cadência) e "próximo passo" da inscrição
   @@index([inscricaoCadenciaId, concluida, vencimento])
   /// timeline da EJ
   @@index([empresaJuniorId, criadoEm])
   @@map("tarefas")
+}
+
+model Subtarefa {
+  id         String   @id @default(cuid())
+  tarefaId   String
+  titulo     String
+  concluida  Boolean  @default(false)
+  criadoEm   DateTime @default(now())
+  tarefa     Tarefa   @relation(fields: [tarefaId], references: [id], onDelete: Cascade)
+
+  @@index([tarefaId, criadoEm, id])
+  @@map("subtarefas")
 }
 
 /// Cadência global (só ADMIN edita). Desative (ativa = false) em vez de apagar: inscrições têm FK Restrict.

@@ -1,7 +1,9 @@
 import type {
   FaixaIcp,
+  FaseTarefa,
   CanalInteracao,
   OrigemTarefa,
+  PrioridadeTarefa,
   ResultadoInteracao,
   StatusProspeccao,
   TipoTimeline,
@@ -82,7 +84,9 @@ export interface Tarefa {
   id: string;
   titulo: string;
   descricao: string | null;
-  vencimento: string;
+  vencimento: string | null;
+  fase: FaseTarefa;
+  prioridade: PrioridadeTarefa;
   concluida: boolean;
   adiadaVezes: number;
   origem: OrigemTarefa;
@@ -90,6 +94,12 @@ export interface Tarefa {
   empresaJuniorId: string | null;
   empresaJunior: { id: string; nome: string; uf: string | null } | null;
   responsavel: { id: string; nome: string };
+  colaboradores: { id: string; nome: string }[];
+  subtarefas: { id: string; titulo: string; concluida: boolean }[];
+}
+
+export interface TarefaAgenda extends Tarefa {
+  podeEditar: boolean;
 }
 
 export interface Agenda {

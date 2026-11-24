@@ -86,6 +86,7 @@ test('interação com próximo passo cria tarefa na agenda e permite concluir', 
   expect(await statusDe(ejs[0].id)).toBe('PRIMEIRO_CONTATO');
 
   await page.goto('/agenda');
+  await page.getByRole('button', { name: 'Lista', exact: true }).click();
   const tarefa = page.getByTestId('tarefa').filter({ hasText: passo });
   await expect(tarefa).toBeVisible();
   await tarefa.getByRole('button', { name: 'Concluir' }).click();
