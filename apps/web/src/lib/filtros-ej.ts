@@ -10,9 +10,17 @@ export const CHAVES_LISTA = [
   'status',
   'responsavelId',
   'faixaIcp',
+  'canais',
 ] as const;
 export const CHAVES_NUM = ['membrosMin', 'membrosMax', 'scoreMin', 'scoreMax'] as const;
-export const CHAVES_FILTRO = ['busca', ...CHAVES_LISTA, ...CHAVES_NUM, 'federada', 'comContato'] as const;
+export const CHAVES_FILTRO = [
+  'busca',
+  ...CHAVES_LISTA,
+  ...CHAVES_NUM,
+  'federada',
+  'comContato',
+  'canaisModo',
+] as const;
 
 export type FiltrosUrl = Partial<Record<(typeof CHAVES_FILTRO)[number], string>>;
 
@@ -28,7 +36,8 @@ export function filtrosDaUrl(p: URLSearchParams): FiltrosUrl {
 export const listaDe = (v?: string) => (v ? v.split(',').filter(Boolean) : []);
 
 export function contarFiltros(f: FiltrosUrl) {
-  return Object.keys(f).filter((k) => k !== 'busca').length;
+  // o modo dos canais é parte do filtro de canais, não um filtro à parte
+  return Object.keys(f).filter((k) => k !== 'busca' && k !== 'canaisModo').length;
 }
 
 /** Filtros da URL -> objeto aceito pelo schema da API / listas salvas. */
@@ -39,6 +48,7 @@ export function urlParaFiltros(f: FiltrosUrl): FiltrosEj {
   for (const k of CHAVES_NUM) if (f[k] !== undefined) out[k] = Number(f[k]);
   if (f.federada) out.federada = f.federada === 'true';
   if (f.comContato) out.comContato = f.comContato === 'true';
+  if (f.canais && f.canaisModo) out.canaisModo = f.canaisModo;
   return out as FiltrosEj;
 }
 
@@ -54,6 +64,7 @@ export function filtrosParaUrl(f: FiltrosEj): FiltrosUrl {
   for (const k of CHAVES_NUM) if (typeof o[k] === 'number') out[k] = String(o[k]);
   if (typeof o.federada === 'boolean') out.federada = String(o.federada);
   if (typeof o.comContato === 'boolean') out.comContato = String(o.comContato);
+  if (typeof o.canaisModo === 'string') out.canaisModo = o.canaisModo;
   return out;
 }
 

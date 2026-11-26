@@ -84,6 +84,20 @@ export const FILTRO_NENHUMA = 'nenhuma';
 export const FILTRO_NENHUM = 'nenhum';
 export const FILTRO_EU = 'eu';
 
+/** Canais de contato institucional da EJ usados no filtro "Canais de contato". */
+export const CANAIS_CONTATO = ['site', 'instagram', 'linkedin', 'email', 'telefone'] as const;
+export type CanalContato = (typeof CANAIS_CONTATO)[number];
+export const CANAL_CONTATO_LABEL: Record<CanalContato, string> = {
+  site: 'Site',
+  instagram: 'Instagram',
+  linkedin: 'LinkedIn',
+  email: 'E-mail',
+  telefone: 'Telefone/WhatsApp',
+};
+/** algum = tem pelo menos um dos marcados; todos = tem todos; apenas = tem algum dos marcados e nenhum outro. */
+export const MODOS_CANAIS = ['algum', 'todos', 'apenas'] as const;
+export type ModoCanais = (typeof MODOS_CANAIS)[number];
+
 export const filtrosEjSchema = z.object({
   busca: z.string().trim().max(120).optional(),
   uf: lista(ufItem),
@@ -105,6 +119,9 @@ export const filtrosEjSchema = z.object({
   faixaIcp: lista(z.enum(FAIXAS_ICP)),
   /** IDs de usuário e/ou "nenhum" (sem responsável) e/ou "eu" (usuário logado) */
   responsavelId: lista(z.string()),
+  /** Canais de contato institucional (site, Instagram, LinkedIn, e-mail, telefone) */
+  canais: lista(z.enum(CANAIS_CONTATO)),
+  canaisModo: z.enum(MODOS_CANAIS).optional(),
 });
 export type FiltrosEj = z.infer<typeof filtrosEjSchema>;
 

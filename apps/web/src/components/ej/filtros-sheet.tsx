@@ -1,7 +1,15 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { SlidersHorizontal } from 'lucide-react';
-import { FAIXAS_ICP, REGIAO_LABEL, STATUS_PROSPECCAO_LABEL, UFS, type Regiao } from '@orcestra/shared';
+import {
+  CANAIS_CONTATO,
+  CANAL_CONTATO_LABEL,
+  FAIXAS_ICP,
+  REGIAO_LABEL,
+  STATUS_PROSPECCAO_LABEL,
+  UFS,
+  type Regiao,
+} from '@orcestra/shared';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { CheckGroup } from '@/components/ui/check-group';
@@ -80,6 +88,38 @@ export function FiltrosSheet({
           <SheetDescription>Combine critérios; eles ficam na URL para compartilhar.</SheetDescription>
         </SheetHeader>
         <div className="-mx-2 grid flex-1 content-start gap-5 overflow-y-auto px-2">
+          <div className="grid gap-2 rounded-lg border p-3">
+            <CheckGroup
+              legenda="Canais de contato"
+              valor={listaDe(rascunho.canais)}
+              onChange={(v) => {
+                const lista = juntar(v);
+                setRascunho((r) => ({
+                  ...r,
+                  canais: lista,
+                  canaisModo: lista ? r.canaisModo : undefined,
+                }));
+              }}
+              opcoes={CANAIS_CONTATO.map((c) => ({ valor: c, rotulo: CANAL_CONTATO_LABEL[c] }))}
+            />
+            <Label htmlFor="f-canais-modo" className="text-xs text-muted-foreground">
+              Como combinar os canais marcados
+            </Label>
+            <Select
+              value={rascunho.canaisModo ?? 'algum'}
+              onValueChange={(v) => set('canaisModo', v === 'algum' ? undefined : v)}
+              disabled={!rascunho.canais}
+            >
+              <SelectTrigger id="f-canais-modo">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="algum">Tem pelo menos um deles</SelectItem>
+                <SelectItem value="todos">Tem todos eles</SelectItem>
+                <SelectItem value="apenas">Tem só esses (nenhum outro canal)</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
           <CheckGroup
             legenda="UF"
             valor={listaDe(rascunho.uf)}

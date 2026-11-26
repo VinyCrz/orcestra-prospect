@@ -1,9 +1,12 @@
 import {
+  CANAIS_CONTATO,
   chaveNome,
   FILTRO_EU,
   FILTRO_NENHUM,
   FILTRO_NENHUMA,
+  type CanalContato,
   type FiltrosEj,
+  type ModoCanais,
 } from '@orcestra/shared';
 import type { Prisma } from '@prisma/client';
 import { EJ_VISIVEL } from './visibilidade';
@@ -43,7 +46,28 @@ export function montarWhere(f: FiltrosEj, usuarioId: string): Prisma.EmpresaJuni
     const ids = f.responsavelId.map((v) => (v === FILTRO_EU ? usuarioId : v));
     and.push(comNulo('responsavelId', ids, FILTRO_NENHUM));
   }
+  if (f.canais?.length) and.push(filtroCanais(f.canais, f.canaisModo ?? 'algum'));
   return { AND: and };
+}
+
+const CAMPO_CANAL: Record<CanalContato, 'site' | 'instagram' | 'linkedin' | 'emailInstitucional' | 'telefoneInstitucional'> = {
+  site: 'site',
+  instagram: 'instagram',
+  linkedin: 'linkedin',
+  email: 'emailInstitucional',
+  telefone: 'telefoneInstitucional',
+};
+const tem = (c: CanalContato): Prisma.EmpresaJuniorWhereInput => ({ [CAMPO_CANAL[c]]: { not: null } });
+const naoTem = (c: CanalContato): Prisma.EmpresaJuniorWhereInput => ({ [CAMPO_CANAL[c]]: null });
+
+/** Filtro por canais de contato institucional (ver MODOS_CANAIS). */
+export function filtroCanais(canais: CanalContato[], modo: ModoCanais): Prisma.EmpresaJuniorWhereInput {
+  const marcados = [...new Set(canais)];
+  if (modo === 'todos') return { AND: marcados.map(tem) };
+  const algum: Prisma.EmpresaJuniorWhereInput = { OR: marcados.map(tem) };
+  if (modo === 'algum') return algum;
+  const outros = CANAIS_CONTATO.filter((c) => !marcados.includes(c));
+  return { AND: [algum, ...outros.map(naoTem)] };
 }
 
 function comNulo(
