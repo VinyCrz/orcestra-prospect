@@ -236,6 +236,6 @@ Modo claro/escuro (segue o sistema, com alternância no topo) e layout responsiv
 | [`docs/base-ejs.md`](docs/base-ejs.md) | coletor, fontes, verificação de sites, LGPD da base |
 | [`docs/decisoes.md`](docs/decisoes.md) | decisões de projeto por etapa |
 | [`docs/compartilhar.md`](docs/compartilhar.md) | link público temporário (Cloudflare Tunnel) |
-| [`docs/deploy.md`](docs/deploy.md) | deploy gratuito: Render (API + Redis), Neon (banco) e Netlify (front) |
+| [`docs/deploy.md`](docs/deploy.md) | deploy gratuito: Render (front + API + Redis) e Neon (banco) |
 | [`docs/tamanho-arquivos.md`](docs/tamanho-arquivos.md) | arquivos grandes e divisões sugeridas |
 | [`brand/paleta.md`](brand/paleta.md) | cores e logo |

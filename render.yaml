@@ -1,34 +1,40 @@
-# Blueprint do Render: API (Docker) + Redis gerenciado (Key Value), ambos no plano gratuito.
+# Blueprint do Render: front + API num serviço só (Docker) + Redis gerenciado (Key Value), no plano grátis.
 # O banco fica na Neon (o Postgres gratuito do Render expira em 30 dias). Passo a passo: docs/deploy.md.
 services:
   - type: web
-    name: orcestra-api
+    name: orcestra-prospect
     runtime: docker
     plan: free
     region: virginia
-    dockerfilePath: ./apps/api/Dockerfile
+    dockerfilePath: ./deploy/render/Dockerfile
     dockerContext: .
-    # Não consulta o banco: deixa a Neon hibernar quando ninguém usa
-    healthCheckPath: /health/vivo
+    # Passa pelo front e pela API, mas não consulta o banco: a Neon pode hibernar
+    healthCheckPath: /api/health/vivo
     autoDeploy: true
     buildFilter:
       paths:
         - apps/api/**
+        - apps/web/**
         - packages/shared/**
+        - deploy/render/**
         - data/ejs.json
         - data/federacoes.json
         - pnpm-lock.yaml
+        - package.json
     envVars:
       - key: NODE_ENV
         value: production
+      # Porta pública (front). A API escuta só por dentro, na 3001.
       - key: PORT
-        value: '3001'
+        value: '3000'
       - key: API_PORT
         value: '3001'
       - key: COOKIE_SECURE
         value: 'true'
       - key: SEED_DATA_DIR
         value: /app/data
+      - key: WEB_URL
+        value: https://orcestra-prospect.onrender.com
       - key: REDIS_URL
         fromService:
           type: keyvalue
@@ -40,10 +46,6 @@ services:
       - key: DATABASE_URL
         sync: false
       - key: SUPRESSAO_PEPPER
-        sync: false
-      - key: PROXY_SECRET
-        sync: false
-      - key: WEB_URL
         sync: false
 
   - type: keyvalue
