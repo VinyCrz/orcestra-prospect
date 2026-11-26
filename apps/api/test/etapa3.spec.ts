@@ -226,3 +226,54 @@ describe('timeline', () => {
     expect(paginarEventos([a, b], 2, 3).map((e) => e.id)).toEqual(['a2']);
   });
 });
+
+describe('botão Prospectar', () => {
+  function montar(ej: { responsavelId: string | null; statusProspeccao: string }, count = 1) {
+    const base = { id: 'e1', motivoPerdaId: null, motivoPerdaDetalhe: null, dataRetornoNutricao: null, ...ej };
+    const tx = {
+      empresaJunior: { updateMany: jest.fn().mockResolvedValue({ count }) },
+      historicoStatus: { createMany: jest.fn() },
+      inscricaoCadencia: { findMany: jest.fn().mockResolvedValue([]) },
+    };
+    const prisma = {
+      empresaJunior: {
+        findUnique: jest.fn().mockResolvedValue({ ...base, responsavel: ej.responsavelId ? { nome: 'Ana' } : null }),
+        findUniqueOrThrow: jest.fn().mockResolvedValue({ statusProspeccao: 'PRIMEIRO_CONTATO', responsavel: null }),
+      },
+      $transaction: (fn: (t: typeof tx) => unknown) => fn(tx),
+    };
+    const audit = { registrar: jest.fn(), registrarVarios: jest.fn() } as unknown as AuditService;
+    return { tx, audit, svc: new StatusService(prisma as unknown as PrismaService, audit) };
+  }
+
+  it('EJ sem responsável: vira do SDR e entra em PRIMEIRO_CONTATO', async () => {
+    const { tx, audit, svc } = montar({ responsavelId: null, statusProspeccao: 'NAO_TRABALHADA' });
+    const r = await svc.prospectar('e1', sdr);
+    expect(r).toMatchObject({ assumiu: true, entrouNoFunil: true });
+    expect(tx.empresaJunior.updateMany).toHaveBeenCalledWith({
+      where: { id: 'e1', responsavelId: null },
+      data: { responsavelId: 'sdr1' },
+    });
+    expect(tx.historicoStatus.createMany).toHaveBeenCalledWith({
+      data: [expect.objectContaining({ de: 'NAO_TRABALHADA', para: 'PRIMEIRO_CONTATO' })],
+    });
+    expect(audit.registrar).toHaveBeenCalledWith(expect.objectContaining({ acao: 'EJ_PROSPECTADA' }), tx);
+  });
+
+  it('SDR não pega EJ da carteira de outra pessoa', async () => {
+    const { svc } = montar({ responsavelId: 'outro', statusProspeccao: 'NAO_TRABALHADA' });
+    await expect(svc.prospectar('e1', sdr)).rejects.toThrow(ForbiddenException);
+  });
+
+  it('já mais à frente no funil: não muda o status', async () => {
+    const { tx, svc } = montar({ responsavelId: 'sdr1', statusProspeccao: 'EM_CONVERSA' });
+    const r = await svc.prospectar('e1', sdr);
+    expect(r).toMatchObject({ assumiu: false, entrouNoFunil: false });
+    expect(tx.empresaJunior.updateMany).not.toHaveBeenCalled();
+  });
+
+  it('dois cliques ao mesmo tempo: o segundo recebe conflito', async () => {
+    const { svc } = montar({ responsavelId: null, statusProspeccao: 'NAO_TRABALHADA' }, 0);
+    await expect(svc.prospectar('e1', gestor)).rejects.toThrow('Outra pessoa acabou de pegar esta EJ');
+  });
+});

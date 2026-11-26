@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Patch, Query } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, Param, Patch, Post, Query } from '@nestjs/common';
 import {
   ApiBearerAuth,
   ApiBody,
@@ -54,6 +54,19 @@ export class FunilController {
     @UsuarioAtual() usuario: UsuarioAutenticado,
   ) {
     return this.status.mudar(id, body, usuario);
+  }
+
+  @Post('empresas-juniores/:id/prospectar')
+  @HttpCode(200)
+  @ApiOperation({
+    summary: 'Prospectar a EJ num clique: vai para a sua carteira e entra no funil.',
+    description:
+      'Sem responsável: passa a ser sua. Em NAO_TRABALHADA/PESQUISADA: vai para PRIMEIRO_CONTATO (com histórico e ' +
+      'auditoria); mais à frente no funil, o status não muda. SDR não pega EJ da carteira de outra pessoa (403).',
+  })
+  @ApiForbiddenResponse({ description: 'SDR e EJ na carteira de outra pessoa' })
+  prospectar(@Param('id') id: string, @UsuarioAtual() usuario: UsuarioAutenticado) {
+    return this.status.prospectar(id, usuario);
   }
 
   @Get('funil/kanban')

@@ -1,4 +1,11 @@
-import { BadRequestException, Injectable, Optional, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+  Optional,
+} from '@nestjs/common';
 import type { MudarStatusInput } from '@orcestra/shared';
 import { Prisma, StatusProspeccao } from '@prisma/client';
 import type { UsuarioAutenticado } from '../auth/auth.types';
@@ -27,6 +34,9 @@ export const SELECT_STATUS = {
   motivoPerdaDetalhe: true,
   dataRetornoNutricao: true,
 } satisfies Prisma.EmpresaJuniorSelect;
+
+/** Status em que a EJ ainda não foi abordada; "Prospectar" leva para PRIMEIRO_CONTATO. */
+const STATUS_ANTES_DO_FUNIL: StatusProspeccao[] = ['NAO_TRABALHADA', 'PESQUISADA'];
 
 const dia = (d: Date | null) => (d ? d.toISOString().slice(0, 10) : null);
 
@@ -60,6 +70,52 @@ export class StatusService {
         motivoPerda: { select: { id: true, nome: true } },
       },
     });
+  }
+
+  /**
+   * Botão "Prospectar": num clique a EJ vai para a carteira de quem clicou (se estiver sem responsável) e entra
+   * no funil em PRIMEIRO_CONTATO (se ainda estava em NAO_TRABALHADA/PESQUISADA). Se já estiver mais à frente,
+   * o status fica como está. SDR não pode pegar EJ da carteira de outra pessoa.
+   */
+  async prospectar(id: string, usuario: UsuarioAutenticado) {
+    const ej = await this.prisma.empresaJunior.findUnique({
+      where: { id },
+      select: { ...SELECT_STATUS, responsavel: { select: { nome: true } } },
+    });
+    if (!ej) throw new NotFoundException('Empresa Júnior não encontrada');
+    if (usuario.papel === 'SDR' && ej.responsavelId && ej.responsavelId !== usuario.id)
+      throw new ForbiddenException(`Esta EJ já está na carteira de ${ej.responsavel?.nome ?? 'outra pessoa'}`);
+
+    const assumiu = !ej.responsavelId;
+    const entrouNoFunil = STATUS_ANTES_DO_FUNIL.includes(ej.statusProspeccao);
+    const r = await this.prisma.$transaction(async (tx) => {
+      if (assumiu) {
+        // só assume se continuar sem responsável (dois cliques ao mesmo tempo não roubam a EJ)
+        const { count } = await tx.empresaJunior.updateMany({
+          where: { id, responsavelId: null },
+          data: { responsavelId: usuario.id },
+        });
+        if (!count) throw new ConflictException('Outra pessoa acabou de pegar esta EJ');
+        await this.audit.registrar(
+          {
+            usuarioId: usuario.id,
+            acao: 'EJ_PROSPECTADA',
+            entidade: 'EmpresaJunior',
+            entidadeId: id,
+            dados: { antes: { responsavelId: null }, depois: { responsavelId: usuario.id } },
+          },
+          tx,
+        );
+      }
+      if (!entrouNoFunil) return { alteradas: 0 };
+      return this.aplicarEmLote(tx, [ej], { status: 'PRIMEIRO_CONTATO' }, usuario, 'kanban');
+    });
+    if (r.alteradas) await this.aposMudanca(usuario.id, 'PRIMEIRO_CONTATO', r.alteradas);
+    const atual = await this.prisma.empresaJunior.findUniqueOrThrow({
+      where: { id },
+      select: { statusProspeccao: true, responsavel: { select: { id: true, nome: true } } },
+    });
+    return { ...atual, assumiu, entrouNoFunil };
   }
 
   /**

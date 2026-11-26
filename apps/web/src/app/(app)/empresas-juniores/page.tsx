@@ -46,6 +46,7 @@ import {
 import { useDebounce } from '@/hooks/use-debounce';
 import { api } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
+import { BotaoProspectar } from '@/components/ej/botao-prospectar';
 import {
   contarFiltros,
   filtrosDaUrl,
@@ -76,6 +77,7 @@ const COLUNAS: Coluna[] = [
   { id: 'responsavel', titulo: 'Responsável', classe: 'hidden xl:table-cell' },
   { id: 'score', titulo: 'Score', ordenar: 'scoreIcp', classe: 'hidden lg:table-cell' },
   { id: 'status', titulo: 'Status', classe: 'hidden sm:table-cell' },
+  { id: 'acao', titulo: 'Funil', classe: 'w-px whitespace-nowrap text-right' },
 ];
 
 const Vazio = () => <span className="text-muted-foreground">—</span>;
@@ -121,6 +123,8 @@ function Celula({ id, ej }: { id: string; ej: EjLista }) {
       return ej.responsavel?.nome ?? <span className="whitespace-nowrap text-muted-foreground">—</span>;
     case 'score':
       return <FaixaBadge faixa={ej.faixaIcp} score={ej.scoreIcp} />;
+    case 'acao':
+      return <BotaoProspectar ej={ej} compacto />;
     default:
       return <StatusBadge status={ej.statusProspeccao} />;
   }

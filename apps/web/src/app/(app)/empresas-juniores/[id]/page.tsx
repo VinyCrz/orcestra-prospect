@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { formatarCnpj, REGIAO_LABEL, type Regiao } from '@orcestra/shared';
 import { AcoesFunilEj } from '@/components/ej/acoes-funil';
+import { BotaoProspectar } from '@/components/ej/botao-prospectar';
 import { SecaoCadenciasEj } from '@/components/cadencias/secao-cadencias-ej';
 import { Timeline } from '@/components/ej/timeline';
 import { SecaoContatos } from '@/components/ej/contatos';
@@ -144,6 +145,7 @@ export default function DetalheEjPage({ params }: { params: Promise<{ id: string
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          <BotaoProspectar ej={ej} />
           {ej.podeEditar && <AcoesFunilEj ejId={ej.id} status={ej.statusProspeccao} />}
           {ej.podeEditar && (
             <Button asChild size="sm" variant="outline">
