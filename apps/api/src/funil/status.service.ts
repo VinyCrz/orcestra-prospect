@@ -24,6 +24,7 @@ export interface EjStatusAtual {
   motivoPerdaId: string | null;
   motivoPerdaDetalhe: string | null;
   dataRetornoNutricao: Date | null;
+  responsavelId?: string | null;
 }
 
 export const SELECT_STATUS = {
@@ -142,6 +143,8 @@ export class StatusService {
     const historico: Prisma.HistoricoStatusCreateManyInput[] = [];
     const mudouStatus: string[] = [];
     const soCampos: string[] = [];
+    // Voltar para "Não trabalhada" = a EJ saiu do funil: fica sem responsável para outra pessoa poder pegar.
+    const libera = campos.statusProspeccao === 'NAO_TRABALHADA';
 
     for (const e of ejs) {
       const trocou = e.statusProspeccao !== campos.statusProspeccao;
@@ -169,8 +172,8 @@ export class StatusService {
         entidadeId: e.id,
         dados: {
           origem,
-          antes: this.snap(e),
-          depois: this.snap(campos),
+          antes: { ...this.snap(e), ...(libera && e.responsavelId ? { responsavelId: e.responsavelId } : {}) },
+          depois: { ...this.snap(campos), ...(libera && e.responsavelId ? { responsavelId: null } : {}) },
         } as Prisma.InputJsonObject,
       });
     }
@@ -183,7 +186,12 @@ export class StatusService {
     if (mudouStatus.length)
       await tx.empresaJunior.updateMany({
         where: { id: { in: mudouStatus } },
-        data: { statusProspeccao: campos.statusProspeccao, statusAlteradoEm: agora, ...dados },
+        data: {
+          statusProspeccao: campos.statusProspeccao,
+          statusAlteradoEm: agora,
+          ...dados,
+          ...(libera ? { responsavelId: null } : {}),
+        },
       });
     if (soCampos.length)
       await tx.empresaJunior.updateMany({ where: { id: { in: soCampos } }, data: dados });
@@ -192,6 +200,15 @@ export class StatusService {
     // avançou no funil (ou perdida/nutrição): encerra cadências ativas e cancela tarefas pendentes
     if (mudouStatus.length && avancouNoFunil(campos.statusProspeccao))
       await encerrarInscricoes(tx, { empresaJuniorId: { in: mudouStatus } }, 'AVANCO_FUNIL', usuario.id);
+    // liberada: as cadências e tarefas de quem era responsável não fazem mais sentido
+    if (mudouStatus.length && libera)
+      await encerrarInscricoes(
+        tx,
+        { empresaJuniorId: { in: mudouStatus } },
+        'MANUAL',
+        usuario.id,
+        'EJ voltou para Não trabalhada e ficou sem responsável',
+      );
     return { alteradas: logs.length, semMudanca: ejs.length - logs.length };
   }
 

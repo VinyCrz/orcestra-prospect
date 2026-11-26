@@ -122,6 +122,14 @@ export function CamposExtraStatus({
       </div>
     );
   }
+  if (status === 'NAO_TRABALHADA') {
+    return (
+      <p className="rounded-md bg-muted p-3 text-sm text-muted-foreground">
+        A EJ sai do funil e fica <strong>sem responsável</strong>, livre para outra pessoa pegar. As cadências
+        dela são encerradas.
+      </p>
+    );
+  }
   return null;
 }
 

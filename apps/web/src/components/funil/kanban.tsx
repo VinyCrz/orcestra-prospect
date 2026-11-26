@@ -1,7 +1,7 @@
 'use client';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { keepPreviousData, useQuery } from '@tanstack/react-query';
+import { keepPreviousData, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   DndContext,
   DragOverlay,
@@ -246,6 +246,7 @@ export function Kanban() {
     return p;
   }, [resp, uf, buscaDeb]);
 
+  const qc = useQueryClient();
   const q = useQuery({
     queryKey: ['kanban', params.toString()],
     queryFn: () => api<RespostaKanban>(`/funil/kanban?${params.toString()}`),
@@ -317,12 +318,15 @@ export function Kanban() {
       },
     });
     setAviso(`${card.nome} movida para ${STATUS_PROSPECCAO_LABEL[para]}`);
+    const liberou = para === 'NAO_TRABALHADA' && !!card.responsavel;
     try {
       await api(`/empresas-juniores/${card.id}/status`, {
         method: 'PATCH',
         json: dados ?? { status: para },
       });
-      void q.refetch();
+      // recarrega o funil e marca o resto (dashboard, lista, carteira…) como desatualizado
+      void qc.invalidateQueries();
+      if (liberou) toast.info(`${card.nome} saiu do funil e ficou sem responsável`);
     } catch (e) {
       setColunas(anterior);
       setAviso(`Não foi possível mover ${card.nome}`);

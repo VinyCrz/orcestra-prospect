@@ -14,7 +14,8 @@ import { escopoResponsavel, resolverPeriodo } from './periodo';
  *  - ejsPorUf e coberturaFederacao: a CARTEIRA do usuário (EmpresaJunior.responsavelId). Essas duas são
  *    fotografia atual, não dependem do período.
  * Visibilidade (EJ_VISIVEL): métricas de BASE (ejsPorUf, funil, cobertura, motivos de perda, tempo por etapa)
- * só contam EJs com forma de contato (temContato). Métricas de ATIVIDADE do SDR (interações, reuniões, resposta
+ * só contam EJs com forma de contato (temContato). O funil ignora EJs que voltaram para NAO_TRABALHADA (movimento
+ * desfeito). Métricas de ATIVIDADE do SDR (interações, reuniões, resposta
  * por canal, ranking, metas, conquistas) contam todo o trabalho feito, inclusive em EJs ocultas.
  */
 @Injectable()
@@ -38,6 +39,8 @@ export class DashboardService {
         WITH ordem(status, n) AS (VALUES ('PESQUISADA'::"StatusProspeccao",1),('PRIMEIRO_CONTATO',2),('EM_CONVERSA',3),('REUNIAO_AGENDADA',4),('OPORTUNIDADE',5)),
         alc AS (SELECT max(o.n) n FROM historico_status h JOIN ordem o ON o.status = h.para
                 JOIN empresas_juniores e ON e.id = h."empresaJuniorId" AND e."temContato"
+                  -- voltou para "Não trabalhada" = movimento desfeito: sai do funil
+                  AND e."statusProspeccao" <> 'NAO_TRABALHADA'
                 WHERE h."criadoEm" >= ${ini} AND h."criadoEm" < ${fim} ${hUsu} GROUP BY h."empresaJuniorId"),
         cnt AS (SELECT n, count(*) c FROM alc GROUP BY n),
         acum AS (SELECT o.n, o.status, sum(coalesce(c.c, 0)) OVER (ORDER BY o.n DESC) alcancaram FROM ordem o LEFT JOIN cnt c USING (n))

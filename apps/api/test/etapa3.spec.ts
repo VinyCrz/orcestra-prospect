@@ -227,6 +227,42 @@ describe('timeline', () => {
   });
 });
 
+describe('voltar para Não trabalhada libera a EJ', () => {
+  it('zera o responsável, encerra cadências e registra na auditoria', async () => {
+    const tx = {
+      empresaJunior: { updateMany: jest.fn() },
+      historicoStatus: { createMany: jest.fn() },
+      inscricaoCadencia: { findMany: jest.fn().mockResolvedValue([]) },
+    };
+    const audit = { registrarVarios: jest.fn() } as unknown as AuditService;
+    const svc = new StatusService({} as PrismaService, audit);
+    const ej = {
+      id: 'e1', statusProspeccao: 'PRIMEIRO_CONTATO' as const, responsavelId: 'sdr1',
+      motivoPerdaId: null, motivoPerdaDetalhe: null, dataRetornoNutricao: null,
+    };
+    await svc.aplicarEmLote(tx as never, [ej], { status: 'NAO_TRABALHADA' }, sdr, 'kanban');
+    expect(tx.empresaJunior.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ statusProspeccao: 'NAO_TRABALHADA', responsavelId: null }) }),
+    );
+    expect(tx.inscricaoCadencia.findMany).toHaveBeenCalled();
+    expect(audit.registrarVarios).toHaveBeenCalledWith(
+      [expect.objectContaining({ dados: expect.objectContaining({ depois: expect.objectContaining({ responsavelId: null }) }) })],
+      tx,
+    );
+  });
+
+  it('outros status mantêm o responsável', async () => {
+    const tx = { empresaJunior: { updateMany: jest.fn() }, historicoStatus: { createMany: jest.fn() } };
+    const svc = new StatusService({} as PrismaService, { registrarVarios: jest.fn() } as unknown as AuditService);
+    const ej = {
+      id: 'e1', statusProspeccao: 'NAO_TRABALHADA' as const, responsavelId: 'sdr1',
+      motivoPerdaId: null, motivoPerdaDetalhe: null, dataRetornoNutricao: null,
+    };
+    await svc.aplicarEmLote(tx as never, [ej], { status: 'PESQUISADA' }, sdr, 'kanban');
+    expect(tx.empresaJunior.updateMany.mock.calls[0][0].data).not.toHaveProperty('responsavelId');
+  });
+});
+
 describe('botão Prospectar', () => {
   function montar(ej: { responsavelId: string | null; statusProspeccao: string }, count = 1) {
     const base = { id: 'e1', motivoPerdaId: null, motivoPerdaDetalhe: null, dataRetornoNutricao: null, ...ej };
