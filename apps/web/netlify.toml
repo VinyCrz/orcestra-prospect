@@ -3,6 +3,8 @@
 [build]
   command = "pnpm --filter @orcestra/shared build && pnpm --filter @orcestra/web build"
   publish = "apps/web/.next"
+  # Pula o build (economiza créditos do plano grátis) quando o push não mexe no front
+  ignore = "git diff --quiet $CACHED_COMMIT_REF $COMMIT_REF -- apps/web packages/shared pnpm-lock.yaml package.json"
 
 [build.environment]
   NODE_VERSION = "22"

@@ -23,7 +23,7 @@ Neon → copiar o banco → Render → Netlify → ajustar `WEB_URL` → despert
 
 1. Entre em **neon.tech** com o GitHub e crie um projeto:
    - região **AWS US East (N. Virginia)**;
-   - versão do Postgres **16** (a mesma do local).
+   - versão do Postgres **16** (a mesma do local; com versão maior, o `pg_dump` local não consegue fazer backup).
 2. Em **Connect**, desligue **Connection pooling** e copie a connection string.
 3. Acrescente `&connect_timeout=30` ao final (o banco leva alguns segundos para acordar). Fica assim:
    `postgresql://usuario:senha@ep-xxx.us-east-1.aws.neon.tech/neondb?sslmode=require&connect_timeout=30`
@@ -69,7 +69,10 @@ O script faz um backup em `backups/`, recusa se a Neon já tiver tabelas e confe
 | `API_INTERNAL_URL` | `https://orcestra-api.onrender.com` (sem barra no final) |
 | `PROXY_SECRET` | o mesmo do Render |
 
-4. Deploy. Se quiser, troque o nome do site em **Site configuration › Change site name** (ex.: `orcestra-prospect`).
+4. Em **Address**, use `orcestra-prospect` e clique em **Start building web**.
+5. A Netlify cria o site **privado** (só quem tem login na Netlify entra; o endereço responde 401). Em
+   **Project configuration › General › Project visibility**: **Customize** › **Private** › **Previews only**.
+   Assim a produção fica aberta (o sistema tem login próprio) e só as prévias continuam privadas.
 
 ## 5. Ajustar o `WEB_URL`
 
@@ -80,20 +83,20 @@ link de "esqueci minha senha". Salvar refaz o deploy.
 
 1. Em **cron-job.org** (grátis, sem cartão), crie um job:
    - URL: `https://orcestra-api.onrender.com/health/vivo`;
-   - a cada 10 minutos;
-   - de segunda a sexta, das 5h50 às 20h;
+   - a cada 10 minutos, **24 horas, todos os dias** (`*/10 * * * *`);
    - fuso `America/Sao_Paulo`.
-2. A rota `/health/vivo` não consulta o banco, então a Neon continua hibernando quando ninguém usa e
-   não gasta a cota de horas.
-3. Fora desse horário, o primeiro acesso demora cerca de 1 min.
-4. Tarefas agendadas:
-   - os alertas diários (6h) rodam na hora certa;
-   - a gamificação de segunda às 3h roda quando a API acordar (5h50).
+2. Por que 24h: o proxy da Netlify espera no máximo ~10 s, e a API dormindo leva ~50 s para acordar.
+   Com ela dormindo, o primeiro acesso daria erro 502. O plano grátis do Render (750 h/mês) cobre um
+   serviço ligado o mês inteiro.
+3. A rota `/health/vivo` não consulta o banco: a Neon continua hibernando quando ninguém usa e não
+   gasta a cota de horas. As tarefas agendadas (alertas às 6h, gamificação de segunda às 3h) rodam na hora.
 
 ## Atualizações
 
 `git push` no `master` publica sozinho:
-- **Netlify:** sempre;
+- **Netlify:** quando mudar `apps/web`, `packages/shared`, `pnpm-lock.yaml` ou `package.json`. Cada
+  build gasta ~15 dos 300 créditos mensais (cerca de 20 publicações por mês): junte alterações pequenas
+  num push só;
 - **Render:** só quando mudar `apps/api`, `packages/shared`, `data/ejs.json`, `data/federacoes.json` ou o `pnpm-lock.yaml`.
 
 Migrations novas rodam no deploy da API, sem apagar dados. O banco da nuvem é separado do banco local:
@@ -111,4 +114,5 @@ scripts/deploy/backup-nuvem.sh 'URL_DA_NEON'
 
 - **Importação de planilha:** na Netlify, o corpo de uma requisição vai até ~6 MB, então use arquivos de até ~5 MB.
 - **Primeiro deploy do Render:** pode falhar por tempo se a Neon estiver hibernando. Clique em **Manual Deploy** de novo.
+- **Créditos da Netlify:** 300 por mês, somando builds e uso do site. Acompanhe em **Usage** no painel.
 - **Contas inativas:** serviços grátis parados por muito tempo podem ser suspensos (a Neon suspende a computação, não apaga os dados).
