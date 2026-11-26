@@ -1,241 +1,147 @@
-# Orc'estra Prospect
+<div align="center">
 
-Plataforma interna de **prospecção B2B** da Orc'estra Gamificação, focada em Empresas Juniores (EJs) do
-Movimento Empresa Júnior. Reúne a base de EJs com contato público, funil de vendas, agenda, cadências de
-mensagem, score de ICP, dashboard com gamificação e controles de LGPD.
+<img src="brand/logo-orcestra.png" alt="Orc'estra Prospect" width="260" />
 
-**Situação:** etapas 1 a 7 concluídas. Base com 1.515 EJs (cadastro nacional + Receita Federal), das quais
-759 têm algum canal público confirmado (site, Instagram, LinkedIn, e-mail ou telefone institucional) e
-aparecem no sistema. Detalhes em [`data/RELATORIO.md`](data/RELATORIO.md).
+### Prospecção de Empresas Juniores, do mapa ao primeiro contato
 
-## Sumário
+Plataforma de prospecção B2B da **Orc'estra Gamificação**, focada nas Empresas Juniores (EJs) do
+Movimento Empresa Júnior. Junta uma base nacional de EJs, montada só com dados públicos, com um funil de vendas
+simples de usar.
 
-- [Stack](#stack) · [Estrutura do repositório](#estrutura-do-repositório) · [Como rodar](#como-rodar)
-- [Arquitetura](#arquitetura) · [Base de Empresas Juniores](#base-de-empresas-juniores)
-- [Variáveis de ambiente](#variáveis-de-ambiente) · [Papéis e permissões](#papéis-e-permissões)
-- [Funcionalidades e como testar](#funcionalidades-e-como-testar) · [LGPD](#lgpd)
-- [Backup do banco](#backup-do-banco) · [Testes](#testes) · [Design](#design) · [Documentação](#documentação)
+[![Next.js](https://img.shields.io/badge/Next.js-15-000000?logo=nextdotjs&logoColor=white)](https://nextjs.org)
+[![NestJS](https://img.shields.io/badge/NestJS-11-E0234E?logo=nestjs&logoColor=white)](https://nestjs.com)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-4169E1?logo=postgresql&logoColor=white)](https://www.postgresql.org)
+[![Prisma](https://img.shields.io/badge/Prisma-6-2D3748?logo=prisma&logoColor=white)](https://www.prisma.io)
+[![LGPD](https://img.shields.io/badge/LGPD-dados%20institucionais-014E18)](docs/base-ejs.md)
 
-## Stack
+[Funcionalidades](#-o-que-ele-faz) · [Telas](#-telas) · [A base de EJs](#-a-base-de-ejs) ·
+[Como funciona](#-como-funciona) · [Rodar localmente](#-rodar-localmente) · [Documentação](#-documentação)
 
-| Camada        | Tecnologias                                                                                                              |
-| ------------- | ------------------------------------------------------------------------------------------------------------------------ |
-| Monorepo      | pnpm workspaces — `apps/web`, `apps/api`, `packages/shared`, `scripts/coleta`                                            |
-| Front         | Next.js 15 (App Router) · TypeScript · Tailwind CSS 4 · shadcn/ui (Radix) · TanStack Query/Table · React Hook Form · Zod |
-| Back          | NestJS 11 · Prisma 6 · PostgreSQL 16 · Swagger em `/docs` · Redis 7 + BullMQ (importação, score, alertas) |
-| Compartilhado | `@orcestra/shared`: enums, tipos, schemas Zod, normalizador e deduplicador                                               |
-| Testes        | Vitest (shared) · Jest (API) · Playwright (E2E)                                                                          |
+<br />
 
-## Estrutura do repositório
+<img src="docs/imagens/lista-ejs.jpg" alt="Lista de Empresas Juniores com score, status e botão Prospectar" width="820" />
 
+</div>
+
+---
+
+## 💡 Por que existe
+
+Prospectar Empresas Juniores dava trabalho: as informações ficam espalhadas entre o site da Brasil Júnior,
+27 federações, universidades e redes sociais, e o controle de quem já foi contatado acabava em planilhas.
+
+O **Orc'estra Prospect** junta tudo num lugar só. Ele mostra quais EJs existem, como falar com cada uma e quais
+valem mais a pena, e o time acompanha cada conversa até virar reunião.
+
+<table>
+  <tr>
+    <td align="center"><h2>1.515</h2>EJs mapeadas</td>
+    <td align="center"><h2>27/27</h2>estados cobertos</td>
+    <td align="center"><h2>1.048</h2>com canal de contato público</td>
+    <td align="center"><h2>0</h2>dados inventados</td>
+  </tr>
+</table>
+
+## ✨ O que ele faz
+
+| | |
+| --- | --- |
+| 🗺️ **Base nacional de EJs** | Nome, IES, cidade, federação, CNPJ e canais institucionais (site, Instagram, LinkedIn, e-mail, WhatsApp), cada um com fonte. |
+| 🔎 **Filtros que fazem sentido** | Por canal de contato ("só tem e-mail", "tem site e LinkedIn"), região, UF, federação, status, faixa de ICP, área e mais. Os filtros ficam no link, então dá para compartilhar. |
+| 🎯 **Prospectar num clique** | O botão **Prospectar** coloca a EJ na sua carteira e no funil. Se ela voltar para "Não trabalhada", fica livre para outra pessoa. |
+| 📊 **Funil em kanban** | Arraste a EJ entre as etapas: primeiro contato, conversa, reunião, oportunidade, perdida ou nutrição. |
+| 🧮 **Score de ICP** | Nota de 0 a 100 e faixa de A a D mostram quais EJs priorizar. Os pesos são ajustáveis. |
+| 💬 **Cadências e templates** | Sequências de mensagens com tarefas na agenda. O sistema gera o texto e abre o WhatsApp ou o e-mail, mas **nada é enviado sozinho**. |
+| 🏆 **Dashboard com gamificação** | Metas do time, ranking, conquistas, taxa de resposta por canal e cobertura por federação. |
+| 🔐 **LGPD e auditoria** | Opt-out, lista de supressão, exportação e anonimização de contatos, e registro de toda ação relevante. |
+
+## 🖼️ Telas
+
+<table>
+  <tr>
+    <td width="50%"><img src="docs/imagens/detalhe-ej.jpg" alt="Página de uma Empresa Júnior" /></td>
+    <td width="50%"><img src="docs/imagens/filtros-escuro.jpg" alt="Painel de filtros no tema escuro" /></td>
+  </tr>
+  <tr>
+    <td align="center"><b>Página da EJ</b>: dados da organização, canais e ações do funil</td>
+    <td align="center"><b>Filtros</b> em seções, aqui no tema escuro</td>
+  </tr>
+</table>
+
+O layout é responsivo, com tema claro e escuro e as cores da marca Orc'estra.
+
+## 🗂️ A base de EJs
+
+A base é montada por um coletor próprio (`scripts/coleta`) que **só usa fontes públicas**:
+
+- o cadastro nacional de EJs exposto pela FEJERS e as páginas das federações e universidades;
+- **Receita Federal** (CNPJ e situação cadastral) e **IBGE** (municípios e regiões);
+- verificação automática dos sites das EJs, de onde saem e-mail e WhatsApp **publicados pela própria EJ**;
+- redes sociais confirmadas por busca, cada uma com o link da evidência.
+
+Regras que não mudam: **nada é inventado** (campo sem fonte fica vazio), só entram **dados institucionais** e
+EJs sem nenhum canal de contato ficam ocultas, sem ser apagadas. Detalhes em
+[`docs/base-ejs.md`](docs/base-ejs.md); números atualizados em [`data/RELATORIO.md`](data/RELATORIO.md).
+
+## ⚙️ Como funciona
+
+```mermaid
+flowchart LR
+  F["Fontes públicas<br/>federações · Receita · IBGE · sites"] --> C["Coletor<br/>scripts/coleta"]
+  C --> D[("data/ejs.json")]
+  D -->|seed e sincronização| DB[("PostgreSQL")]
+  W["Front Next.js<br/>apps/web"] -->|"/api/* (proxy)"| A["API NestJS<br/>apps/api"]
+  A --> DB
+  A --> R[("Redis + BullMQ<br/>score, importação, alertas")]
+  S["@orcestra/shared<br/>schemas Zod"] -.-> W
+  S -.-> A
 ```
-apps/
-  api/            API NestJS (módulos em src/, Prisma em prisma/, testes Jest em test/)
-  web/            Front Next.js (rotas em src/app, componentes em src/components, E2E em e2e/)
-packages/
-  shared/         Enums, tipos, schemas Zod, normalizador e deduplicador (usados pelo front e pela API)
-scripts/
-  coleta/         Coletor da base de EJs (fontes públicas, Receita, IBGE, verificação de sites)
-data/             Base gerada pelo coletor (ejs.json/csv, federacoes.json, redes-encontradas.json, RELATORIO.md)
-docs/             Documentação técnica (comandos, arquitetura, base de EJs, decisões)
-brand/            Paleta e logo da marca
-docker-compose.yml, .env.example, package.json, pnpm-workspace.yaml
-```
 
-## Como rodar
+- **Monorepo pnpm** com quatro pacotes: o front (`apps/web`), a API (`apps/api`), o compartilhado
+  (`packages/shared`) e o coletor (`scripts/coleta`).
+- Front e API **validam com os mesmos schemas Zod**, então uma regra muda num lugar só.
+- O navegador só fala com o front, que repassa `/api/*` para a API. Não há CORS, e o cookie de sessão é `httpOnly`.
+- Senhas usam argon2id, o login dura 15 minutos com refresh token rotativo, há rate limit e três papéis
+  (ADMIN, GESTOR e SDR).
 
-### Pré-requisitos
+| Camada | Tecnologias |
+| --- | --- |
+| Front | Next.js 15 (App Router), Tailwind CSS 4, shadcn/ui, TanStack Query e Table, React Hook Form |
+| API | NestJS 11, Prisma 6, PostgreSQL 16, Redis 7 + BullMQ, Swagger |
+| Testes | Vitest, Jest (mais de 150 testes na API), Playwright (E2E) |
+| Deploy | Render (front e API num único serviço) e Neon (Postgres) |
 
-Node 20+ (testado com 22 e 26), pnpm 9 (`npm i -g pnpm@9`), Docker + Docker Compose.
+## 🚀 Rodar localmente
 
-### Opção A — tudo em Docker
+Requer Node 20+, pnpm 9 e Docker.
 
 ```bash
-cp .env.example .env            # ajuste JWT_ACCESS_SECRET e ADMIN_* (obrigatório em produção)
-docker compose up -d --build    # postgres, redis, api (aplica migrations ao subir) e web
-docker compose exec api pnpm db:seed   # cria o ADMIN e carrega federações, IES e EJs (idempotente)
-```
-
-### Opção B — desenvolvimento local (hot reload)
-
-```bash
-cp .env.example .env
+git clone https://github.com/VinyCrz/orcestra-prospect.git
+cd orcestra-prospect
+cp .env.example .env              # defina JWT_ACCESS_SECRET e ADMIN_SENHA
 pnpm install
 docker compose up -d postgres redis
-pnpm db:migrate                 # prisma migrate dev
-pnpm db:seed
-pnpm dev                        # API em :3001 e web em :3000
+pnpm db:migrate && pnpm db:seed   # cria o ADMIN e carrega a base de EJs
+pnpm dev                          # web em http://localhost:3000 · API em :3001 (Swagger em /docs)
 ```
 
-### Acessos
+Para subir tudo em Docker, ver as variáveis de ambiente ou rodar os testes, consulte o
+[guia técnico](docs/guia-tecnico.md).
 
-| O quê       | URL                                                                        |
-| ----------- | -------------------------------------------------------------------------- |
-| Aplicação   | http://localhost:3000                                                      |
-| API         | http://localhost:3001                                                      |
-| Swagger     | http://localhost:3001/docs — **só com a API em dev** (`pnpm dev`); desligado com `NODE_ENV=production` (container) |
-| Healthcheck | http://localhost:3001/health (também via http://localhost:3000/api/health) |
+## 📚 Documentação
 
-Usuário inicial: o que estiver em `ADMIN_EMAIL` / `ADMIN_SENHA` no `.env` (defina uma senha forte antes do
-primeiro `pnpm db:seed`; para trocar depois: `pnpm trocar-senha <email>`).
-
-### Scripts (raiz)
-
-| Script                   | O que faz                                                                                                   |
-| ------------------------ | ----------------------------------------------------------------------------------------------------------- |
-| `pnpm dev`               | compila o shared e sobe API + web em modo watch                                                             |
-| `pnpm build`             | build de todos os pacotes                                                                                   |
-| `pnpm lint`              | ESLint em todos os pacotes                                                                                  |
-| `pnpm test`              | testes unitários (shared + API)                                                                             |
-| `pnpm test:e2e`          | Playwright (requer a stack rodando; `npx playwright install chromium` na 1ª vez)                            |
-| `pnpm db:migrate`        | `prisma migrate dev`                                                                                        |
-| `pnpm db:migrate:deploy` | `prisma migrate deploy`                                                                                     |
-| `pnpm db:seed`           | seed idempotente (ADMIN + base de EJs)                                                                      |
-| `pnpm coleta`            | reexecuta o coletor e regrava `data/ejs.json`, `data/ejs.csv`, `data/federacoes.json` e `data/RELATORIO.md` |
-| `pnpm format`            | Prettier                                                                                                    |
-
-## Arquitetura
-
-```
-apps/
-  api/            NestJS — auth, usuários, empresas-juniores, federações, health, filas (BullMQ)
-    prisma/       schema.prisma, migrations, seed.ts
-    test/         testes unitários (auth service, guards)
-  web/            Next.js — login, esqueci/redefinir senha, EJs (lista + detalhe), usuários
-    src/app/api/  proxy /api/* → API (mesma origem para o cookie httpOnly)
-    e2e/          Playwright
-packages/shared/  tipos, enums, schemas Zod, normalizador/deduplicador (+ testes)
-scripts/coleta/   coletor reexecutável da base de EJs
-data/             ejs.json, ejs.csv, federacoes.json, RELATORIO.md (cache em data/cache, fora do git)
-```
-
-### Autenticação
-
-- Senhas com **argon2id**.
-- **Access token JWT** (15 min, em memória no front, enviado como `Bearer`).
-- **Refresh token** opaco (7 dias) em cookie `httpOnly`, `SameSite=Strict` (`Secure` em produção via
-  `COOKIE_SECURE=true`). No banco fica só o **hash SHA-256**. A cada uso o token é **rotacionado**; reuso
-  de um token já revogado derruba todas as sessões do usuário.
-- Guards globais: `JwtAuthGuard` (exige token e usuário **ativo** — desativar um usuário corta o acesso
-  imediatamente) e `RolesGuard` (`@Papeis('ADMIN')`). Rotas públicas usam `@Public()`.
-- Papéis: ver **Papéis e permissões** abaixo.
-- Senhas: mínimo 10 caracteres com letra, número e símbolo (`senhaSchema` do shared, usado na API, no front e no seed).
-- **Rate limit** (`@nestjs/throttler`): login 5/min por IP+e-mail; cadastro 5/min por IP; refresh, esqueci e redefinir senha 10/min por IP
-  (`RATE_LIMIT_LOGIN_POR_MIN` / `RATE_LIMIT_AUTH_POR_MIN`). Acima disso, 429 com mensagem em pt-BR.
-- `helmet`, `trust proxy` = 1 (o proxy do web sobrescreve `X-Forwarded-For`), CORS desligado por padrão.
-- Login com sucesso e falha vão para o AuditLog (`LOGIN_OK` / `LOGIN_FALHOU`, e-mail mascarado), com IP.
-- Senha esquecida: não há envio de e-mail. O ADMIN gera em **Usuários** um link de uso único (24 h) e manda
-  para a pessoa (botão de WhatsApp). Em desenvolvimento, a rota `/auth/esqueci-senha` ainda grava o link no log.
-- Autocadastro em `/cadastro` com o código da equipe (definido pelo ADMIN em Usuários); a conta entra como SDR.
-- Front: o `middleware` redireciona para `/login` quando não há cookie de sessão; o layout logado valida a
-  sessão e o papel (a API valida de novo).
-
-### Banco de dados
-
-O schema já contém todas as entidades previstas: `Usuario`, `Federacao`, `Nucleo`, `Ies`, `EmpresaJunior`,
-`Contato`, `Interacao`, `Tarefa`, `Cadencia`, `PassoCadencia`, `TemplateMensagem`, `Tag`, `ListaSalva`,
-`Importacao`, `AuditLog` (+ `RefreshToken` e `TokenRedefinicaoSenha` para o auth).
-`EmpresaJunior.chaveDedupe` (CNPJ ou nome+IES+UF normalizados) garante seed idempotente.
-
-## Base de Empresas Juniores
-
-Montada pelo coletor (`pnpm coleta`) só com fontes públicas: cadastro nacional exposto pela API da FEJERS,
-páginas das federações e universidades, Receita Federal (CNPJ), IBGE, verificação automática dos sites e
-redes confirmadas por busca na web (cada uma com link de evidência em `data/redes-encontradas.json`).
-Nada é inventado (campo sem fonte = `null`) e só entram dados institucionais (LGPD).
-
-EJs sem nenhum canal de contato ficam **ocultas** (não apagadas). Pipeline, regras e como atualizar:
-[`docs/base-ejs.md`](docs/base-ejs.md). Totais, fontes e lacunas: [`data/RELATORIO.md`](data/RELATORIO.md).
-
-## Variáveis de ambiente
-
-Copie `.env.example` para `.env`. Todas estão comentadas no arquivo; as principais:
-
-| Variável | Para quê |
+| Documento | Conteúdo |
 | --- | --- |
-| `POSTGRES_*`, `DATABASE_URL` | banco (no compose a API usa o host `postgres`) |
-| `REDIS_URL` | filas BullMQ (importação, score, alertas, gamificação) |
-| `JWT_ACCESS_SECRET` | assinatura do access token — `openssl rand -base64 48` |
-| `JWT_ACCESS_TTL`, `REFRESH_TOKEN_TTL_DIAS` | validade dos tokens |
-| `COOKIE_SECURE` | `true` em produção (HTTPS) |
-| `WEB_URL` | URL pública do front (link de redefinição de senha) |
-| `CORS_ORIGINS` | vazio = CORS desligado (o browser só fala com a API pelo proxy `/api/*`) |
-| `SUPRESSAO_PEPPER` | pepper do HMAC da lista de supressão LGPD — `openssl rand -hex 32`; **obrigatório em produção, não troque depois de usar** |
-| `RATE_LIMIT_LOGIN_POR_MIN`, `RATE_LIMIT_AUTH_POR_MIN` | rate limit (padrão 5 e 10). para rodar a suíte Playwright, suba temporariamente para 30 e 120 |
-| `API_INTERNAL_URL` | URL que o servidor Next usa para chegar na API |
-| `ADMIN_NOME`, `ADMIN_EMAIL`, `ADMIN_SENHA` | ADMIN criado pelo seed (senha precisa atender à política) |
+| [Guia técnico](docs/guia-tecnico.md) | scripts, autenticação, variáveis, papéis, LGPD, backup, testes e design |
+| [Comandos](docs/comandos.md) | todos os comandos (Docker, banco, testes, E2E) |
+| [Arquitetura](docs/arquitetura.md) | auth, proxy, banco e decisões técnicas |
+| [Base de EJs](docs/base-ejs.md) | coletor, fontes, verificação dos sites e LGPD da base |
+| [Decisões](docs/decisoes.md) | decisões de produto tomadas em cada etapa |
+| [Deploy](docs/deploy.md) | como publicar de graça no Render e no Neon |
+| [Paleta](brand/paleta.md) | cores e logo da marca |
 
-## Papéis e permissões
-
-| Ação | SDR | GESTOR | ADMIN |
-| --- | --- | --- | --- |
-| Ver EJs, contatos, funil, dashboard | ✅ (dashboard só os dados dele) | ✅ | ✅ |
-| Editar EJ, registrar interação, mover no kanban, inscrever em cadência | só EJs da carteira dele | ✅ | ✅ |
-| Carteira (atribuir/rodízio), importação CSV/XLSX | — | ✅ | ✅ |
-| Templates de mensagem | ler | ✅ | ✅ |
-| Desmarcar opt-out, exportar/anonimizar/excluir contato | — | ✅ | ✅ |
-| Cadências, score de ICP, metas, motivos de perda, usuários, auditoria, LGPD/retenção | ler (onde houver tela) | ler | ✅ |
-
-## Funcionalidades e como testar
-
-| Etapa | Onde | Como testar rapidamente |
-| --- | --- | --- |
-| 1–2 Base, filtros, contatos, listas, ações em massa, carteira, importação | `/empresas-juniores`, `/carteira`, `/importacoes` | filtrar por UF/faixa, abrir uma EJ, salvar uma lista |
-| 3 Funil, interações, timeline, agenda | `/funil`, detalhe da EJ, `/agenda` | registrar interação com próximo passo → tarefa aparece na agenda; arrastar card no kanban |
-| 4 Score de ICP | badge A/B/C/D, card "Score de ICP" no detalhe, `/configuracoes/score`, "Prioridades da semana" na agenda | mudar um peso e salvar → recálculo em fila |
-| 5 Templates e cadências | `/templates`, `/cadencias`, seção "Cadências" na EJ, "Gerar mensagem" na agenda | inscrever uma EJ → tarefa do passo → gerar mensagem → copiar/abrir WhatsApp ou e-mail → marcar como enviada. **Nada é enviado automaticamente** |
-| 6 Dashboard e gamificação | `/dashboard`, `/configuracoes/metas` | trocar período; ver ranking, barra de meta e conquistas |
-| 7 LGPD, auditoria, segurança | contatos (opt-out, exportar, anonimizar), `/configuracoes/auditoria`, `/configuracoes/lgpd`, `/politica-de-dados` | marcar opt-out (motivo obrigatório) → links somem; filtrar a auditoria por ação |
-
-## LGPD
-
-- **Opt-out** bloqueia o contato em toda a plataforma (mensagens, links, inscrição em cadência, importação). Marcar exige
-  motivo, grava data, `HistoricoOptOut` (append-only), encerra cadências e cancela tarefas do contato. Só GESTOR/ADMIN desmarcam.
-- **Lista de supressão**: e-mails/telefones em opt-out ou anonimizados ficam só como hash HMAC (`SUPRESSAO_PEPPER`);
-  impede recriar o contato à mão ou por importação. Depois de um deploy ou troca de pepper: `POST /lgpd/supressao/backfill` (ADMIN, botão em `/configuracoes/lgpd`).
-- **Direitos do titular**: `GET /contatos/:id/exportar` (JSON) e `POST /contatos/:id/anonimizar` (definitivo), GESTOR/ADMIN, ambos auditados.
-- **Retenção**: nada é apagado automaticamente. `/configuracoes/lgpd` lista contatos com mandato encerrado há mais de 24 meses
-  e sem interação há 24 meses; o ADMIN revisa e anonimiza. Detalhes em `docs/base-ejs.md` e na página `/politica-de-dados`.
-- **Pendente**: preencher o e-mail do encarregado (DPO) em `/politica-de-dados` (está como `[preencher]`).
-
-## Backup do banco
-
-```bash
-mkdir -p backups
-docker compose exec -T postgres pg_dump -U orcestra -d orcestra_prospect -Fc > backups/orcestra_$(date +%Y%m%d_%H%M).dump
-```
-
-Restaurar (em banco vazio): `docker compose exec -T postgres pg_restore -U orcestra -d orcestra_prospect --clean --if-exists < backups/<arquivo>.dump`.
-Faça backup antes de qualquer operação destrutiva. `backups/` fica fora do git.
-
-## Testes
-
-```bash
-pnpm test        # Vitest (shared: normalizador, score, cadências, templates) + Jest (API: auth, permissões, etapas 3–7)
-pnpm --filter @orcestra/web exec playwright test --workers=1   # 23 e2e; stack no ar (docker compose)
-```
-
-Os e2e criam e apagam os próprios dados (`QA TESTE …`), inclusive as supressões dos contatos de teste
-(`apps/web/e2e/supressao.ts`). `jornada.spec.ts` cobre login → filtrar EJ → registrar interação → mover no kanban → dashboard.
-Em máquinas com pouca RAM (~10 GB), rode builds e Playwright sozinhos e com `--workers=1`.
-
-## Design
-
-Identidade da Orc'estra Gamificação (`brand/paleta.md`): escala `--brand-50..950` em oklch no topo de
-`apps/web/src/app/globals.css`, derivada de `#014E18` (primária, `brand-700`; no escuro `brand-400`), `#003D0D`
-(`brand-800`, fundo do logo), `#FFFBDC` (`--brand-cream`, texto sobre verde) e `#2EB600` (`brand-500`, destaque:
-conquistas e meta batida). Cores só por tokens, nada hardcoded. Texto normal com contraste AA (>= 4.5:1) nos dois temas.
-Modo claro/escuro (segue o sistema, com alternância no topo) e layout responsivo. O componente `Logo` usa
-`apps/web/public/brand/` (logo completa na sidebar e no login; ícone + "Prospect" no topo em telas estreitas).
-
-## Documentação
-
-| Arquivo | Conteúdo |
-| --- | --- |
-| [`docs/comandos.md`](docs/comandos.md) | todos os comandos (Docker, testes, E2E, banco) |
-| [`docs/arquitetura.md`](docs/arquitetura.md) | auth, proxy, banco, testes |
-| [`docs/base-ejs.md`](docs/base-ejs.md) | coletor, fontes, verificação de sites, LGPD da base |
-| [`docs/decisoes.md`](docs/decisoes.md) | decisões de projeto por etapa |
-| [`docs/deploy.md`](docs/deploy.md) | deploy gratuito: Render (front + API + Redis) e Neon (banco) |
-| [`docs/tamanho-arquivos.md`](docs/tamanho-arquivos.md) | arquivos grandes e divisões sugeridas |
-| [`brand/paleta.md`](brand/paleta.md) | cores e logo |
+<div align="center">
+<br />
+<sub>Feito para a <b>Orc'estra Gamificação</b> · uso interno · dados públicos e institucionais, tratados conforme a LGPD</sub>
+</div>
