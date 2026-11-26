@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Campo } from '@/components/form/campo';
 import { useAuth } from '@/lib/auth';
-import { ApiError } from '@/lib/api';
+import { api, ApiError } from '@/lib/api';
 
 function destinoSeguro(next: string | null) {
   return next && next.startsWith('/') && !next.startsWith('//') ? next : '/empresas-juniores';
@@ -21,6 +21,7 @@ function FormLogin() {
   const router = useRouter();
   const params = useSearchParams();
   const [erro, setErro] = useState<string | null>(null);
+  const [cadastroAberto, setCadastroAberto] = useState(false);
   const { register, handleSubmit, formState } = useForm<LoginInput>({
     resolver: zodResolver(loginSchema),
   });
@@ -28,6 +29,12 @@ function FormLogin() {
   useEffect(() => {
     if (estado === 'autenticado') router.replace(destinoSeguro(params.get('next')));
   }, [estado, params, router]);
+
+  useEffect(() => {
+    api<{ aberto: boolean }>('/auth/cadastro', { semRenovar: true })
+      .then((r) => setCadastroAberto(r.aberto))
+      .catch(() => setCadastroAberto(false));
+  }, []);
 
   const onSubmit = handleSubmit(async (dados) => {
     setErro(null);
@@ -49,7 +56,7 @@ function FormLogin() {
     <form onSubmit={onSubmit} className="grid gap-6" noValidate>
       <div className="grid gap-1">
         <h1 className="text-2xl font-semibold tracking-tight">Entrar</h1>
-        <p className="text-sm text-muted-foreground">Acesse com seu e-mail corporativo.</p>
+        <p className="text-sm text-muted-foreground">Acesse com seu e-mail e senha.</p>
       </div>
       {erro && (
         <div
@@ -94,6 +101,14 @@ function FormLogin() {
         {formState.isSubmitting && <Loader2 className="animate-spin" />}
         Entrar
       </Button>
+      {cadastroAberto && (
+        <p className="text-center text-sm text-muted-foreground">
+          Não tem conta?{' '}
+          <Link href="/cadastro" className="text-primary underline-offset-4 hover:underline">
+            Criar conta
+          </Link>
+        </p>
+      )}
     </form>
   );
 }

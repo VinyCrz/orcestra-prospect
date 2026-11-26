@@ -2,9 +2,11 @@ import { Body, Controller, Get, HttpCode, Post, Req, Res } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config';
 import { ApiBearerAuth, ApiBody, ApiOperation, ApiTags } from '@nestjs/swagger';
 import {
+  cadastroSchema,
   esqueciSenhaSchema,
   loginSchema,
   redefinirSenhaSchema,
+  type CadastroInput,
   type EsqueciSenhaInput,
   type LoginInput,
   type RedefinirSenhaInput,
@@ -12,9 +14,10 @@ import {
 import type { CookieOptions, Request, Response } from 'express';
 import { ZodValidationPipe } from '../common/zod-validation.pipe';
 import { PrismaService } from '../prisma/prisma.service';
-import { LimiteAuth, LimiteLogin } from './auth-throttler.guard';
+import { LimiteAuth, LimiteCadastro, LimiteLogin } from './auth-throttler.guard';
 import { AuthService, usuarioPublico, type Sessao } from './auth.service';
-import { EsqueciSenhaDto, LoginDto, RedefinirSenhaDto } from './auth.dto';
+import { CadastroDto, EsqueciSenhaDto, LoginDto, RedefinirSenhaDto } from './auth.dto';
+import { CadastroService } from './cadastro.service';
 import { REFRESH_COOKIE, type UsuarioAutenticado } from './auth.types';
 import { Public } from './decorators/public.decorator';
 import { UsuarioAtual } from './decorators/usuario-atual.decorator';
@@ -24,6 +27,7 @@ import { UsuarioAtual } from './decorators/usuario-atual.decorator';
 export class AuthController {
   constructor(
     private readonly auth: AuthService,
+    private readonly cadastro: CadastroService,
     private readonly prisma: PrismaService,
     private readonly config: ConfigService,
   ) {}
@@ -78,6 +82,26 @@ export class AuthController {
       res.clearCookie(REFRESH_COOKIE, this.cookieOpts());
       throw e;
     }
+  }
+
+  @Public()
+  @LimiteAuth()
+  @Get('cadastro')
+  @ApiOperation({ summary: 'Diz se o autocadastro está aberto (há código da equipe definido).' })
+  statusCadastro() {
+    return this.cadastro.status();
+  }
+
+  @Public()
+  @LimiteCadastro()
+  @Post('cadastro')
+  @HttpCode(201)
+  @ApiBody({ type: CadastroDto })
+  @ApiOperation({
+    summary: 'Cria a própria conta (SDR) com o código da equipe. Depois, faça login.',
+  })
+  cadastrar(@Body(new ZodValidationPipe(cadastroSchema)) body: CadastroInput) {
+    return this.cadastro.cadastrar(body);
   }
 
   @Public()

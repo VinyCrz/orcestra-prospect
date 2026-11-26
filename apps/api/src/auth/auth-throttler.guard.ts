@@ -23,6 +23,21 @@ export class AuthThrottlerGuard extends ThrottlerGuard {
   }
 }
 
+/** Variante só por IP: impede tentar códigos trocando o e-mail a cada pedido. */
+@Injectable()
+export class IpThrottlerGuard extends AuthThrottlerGuard {
+  protected async getTracker(req: { ip?: string }): Promise<string> {
+    return (req.ip as string | undefined) ?? 'sem-ip';
+  }
+}
+
+/** Autocadastro: 5/min por IP (RATE_LIMIT_CADASTRO_POR_MIN). */
+export const LimiteCadastro = () =>
+  applyDecorators(
+    UseGuards(IpThrottlerGuard),
+    Throttle({ default: { limit: lerLimite('RATE_LIMIT_CADASTRO_POR_MIN', 5), ttl: MINUTO } }),
+  );
+
 /** Login: 5/min por IP+e-mail (RATE_LIMIT_LOGIN_POR_MIN). */
 export const LimiteLogin = () =>
   applyDecorators(

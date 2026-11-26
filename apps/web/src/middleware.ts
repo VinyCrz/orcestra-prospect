@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server';
 
-const PUBLICAS = ['/login', '/esqueci-senha', '/redefinir-senha'];
+const PUBLICAS = ['/login', '/cadastro', '/esqueci-senha', '/redefinir-senha'];
 const REFRESH_COOKIE = 'orc_refresh';
 
 /** Proteção de rotas: sem cookie de sessão, redireciona para o login. O papel é checado no layout e na API. */

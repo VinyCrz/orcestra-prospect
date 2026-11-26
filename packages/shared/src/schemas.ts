@@ -28,6 +28,27 @@ export type RedefinirSenhaInput = z.infer<typeof redefinirSenhaSchema>;
 
 export const papelSchema = z.enum(PAPEIS);
 
+/** Autocadastro pela tela "Criar conta": exige o código da equipe definido pelo ADMIN. Entra sempre como SDR. */
+export const cadastroSchema = z.object({
+  nome: z.string().trim().min(2, 'Informe o nome').max(120),
+  email: z.string().trim().toLowerCase().email('Informe um e-mail válido'),
+  senha: senhaSchema,
+  codigo: z.string().trim().min(1, 'Informe o código da equipe').max(64),
+});
+export type CadastroInput = z.infer<typeof cadastroSchema>;
+
+/** Código da equipe para o autocadastro. `null` fecha o cadastro. */
+export const codigoCadastroSchema = z.object({
+  codigo: z
+    .string()
+    .trim()
+    .min(8, 'O código deve ter pelo menos 8 caracteres')
+    .max(64, 'O código é muito longo')
+    .regex(/^\S+$/, 'O código não pode ter espaços')
+    .nullable(),
+});
+export type CodigoCadastroInput = z.infer<typeof codigoCadastroSchema>;
+
 export const criarUsuarioSchema = z.object({
   nome: z.string().trim().min(2, 'Informe o nome').max(120),
   email: z.string().trim().toLowerCase().email('Informe um e-mail válido'),

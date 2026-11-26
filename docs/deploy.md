@@ -60,6 +60,9 @@ O script faz um backup em `backups/`, recusa se a Neon já tiver tabelas e confe
 Se o Render der outro endereço ao serviço, ajuste `WEB_URL` no `render.yaml` (é usado no link de
 "esqueci minha senha").
 
+Depois do primeiro deploy, entre como ADMIN e, em **Usuários › Código da equipe**, defina o código
+para a equipe criar as próprias contas em `/cadastro`. Até lá, o cadastro fica fechado.
+
 ## 4. Despertador
 
 Em **cron-job.org** (grátis, sem cartão), crie um job:

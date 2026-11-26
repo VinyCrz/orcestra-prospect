@@ -3,9 +3,10 @@ import { ConfigService } from '@nestjs/config';
 import { APP_GUARD } from '@nestjs/core';
 import { JwtModule } from '@nestjs/jwt';
 import { ThrottlerModule } from '@nestjs/throttler';
-import { AuthThrottlerGuard } from './auth-throttler.guard';
+import { AuthThrottlerGuard, IpThrottlerGuard } from './auth-throttler.guard';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
+import { CadastroService } from './cadastro.service';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { RolesGuard } from './guards/roles.guard';
 import { SenhaService } from './senha.service';
@@ -28,9 +29,11 @@ import { SenhaService } from './senha.service';
     AuthService,
     SenhaService,
     AuthThrottlerGuard,
+    IpThrottlerGuard,
+    CadastroService,
     { provide: APP_GUARD, useClass: JwtAuthGuard },
     { provide: APP_GUARD, useClass: RolesGuard },
   ],
-  exports: [AuthService, SenhaService],
+  exports: [AuthService, SenhaService, CadastroService],
 })
 export class AuthModule {}

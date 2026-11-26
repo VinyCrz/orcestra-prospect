@@ -194,6 +194,17 @@ model Usuario {
   @@map("usuarios")
 }
 
+/// Configurações gerais do sistema (linha única, id = 1).
+model ConfigSistema {
+  id                        Int       @id @default(1)
+  /// Hash argon2 do código da equipe para o autocadastro. Nulo = cadastro fechado.
+  codigoCadastroHash        String?
+  codigoCadastroAlteradoEm  DateTime?
+  atualizadoEm              DateTime  @updatedAt
+
+  @@map("config_sistema")
+}
+
 model RefreshToken {
   id         String    @id @default(cuid())
   usuarioId  String

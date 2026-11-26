@@ -18,6 +18,7 @@ import { SomentePapeis } from '@/components/app-shell';
 import { Campo } from '@/components/form/campo';
 import { RequisitosSenha } from '@/components/form/requisitos-senha';
 import { PageHeader } from '@/components/page-header';
+import { CodigoEquipeCard } from '@/components/usuarios/codigo-equipe-card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -304,6 +305,9 @@ function Usuarios() {
           </TableBody>
         </Table>
       </Card>
+      <div className="mt-6">
+        <CodigoEquipeCard />
+      </div>
       <DialogCriar aberto={criando} onFechar={() => setCriando(false)} />
       <DialogEditar usuario={editando} onFechar={() => setEditando(null)} />
     </>

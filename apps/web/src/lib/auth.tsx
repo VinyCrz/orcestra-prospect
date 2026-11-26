@@ -19,7 +19,7 @@ import {
   type RespostaSessao,
 } from './api';
 
-const ROTAS_PUBLICAS = ['/login', '/esqueci-senha', '/redefinir-senha'];
+const ROTAS_PUBLICAS = ['/login', '/cadastro', '/esqueci-senha', '/redefinir-senha'];
 
 type Estado = 'carregando' | 'autenticado' | 'anonimo';
 

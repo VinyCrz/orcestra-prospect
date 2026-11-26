@@ -25,6 +25,7 @@ const envSchema = z.object({
   PROXY_SECRET: z.string().min(32, 'PROXY_SECRET deve ter pelo menos 32 caracteres').optional().or(z.literal('')),
   RATE_LIMIT_LOGIN_POR_MIN: z.coerce.number().int().min(1).default(5),
   RATE_LIMIT_AUTH_POR_MIN: z.coerce.number().int().min(1).default(10),
+  RATE_LIMIT_CADASTRO_POR_MIN: z.coerce.number().int().min(1).default(5),
 }).superRefine((v, ctx) => {
   if (v.NODE_ENV === 'production' && (v.SUPRESSAO_PEPPER ?? '').length < 32) {
     ctx.addIssue({
