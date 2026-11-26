@@ -45,7 +45,7 @@ valem mais a pena, e o time acompanha cada conversa até virar reunião.
 
 ## ✨ O que ele faz
 
-| | |
+| Recurso | Para quê |
 | --- | --- |
 | 🗺️ **Base nacional de EJs** | Nome, IES, cidade, federação, CNPJ e canais institucionais (site, Instagram, LinkedIn, e-mail, WhatsApp), cada um com fonte. |
 | 🔎 **Filtros que fazem sentido** | Por canal de contato ("só tem e-mail", "tem site e LinkedIn"), região, UF, federação, status, faixa de ICP, área e mais. Os filtros ficam no link, então dá para compartilhar. |
