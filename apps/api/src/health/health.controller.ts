@@ -15,6 +15,17 @@ export class HealthController {
     @InjectQueue(FILAS.ENRIQUECIMENTO) private readonly fila: Queue,
   ) {}
 
+  /**
+   * Só confirma que o processo está de pé, sem tocar no banco nem no Redis. Usado pelo health check do
+   * Render e pelo "despertador": assim o banco serverless (Neon) pode hibernar quando ninguém usa.
+   */
+  @Public()
+  @Get('vivo')
+  @ApiOperation({ summary: 'Liveness (não consulta banco nem Redis)' })
+  vivo() {
+    return { status: 'ok', horario: new Date().toISOString() };
+  }
+
   @Public()
   @Get()
   @ApiOperation({ summary: 'Healthcheck (API, PostgreSQL e Redis)' })

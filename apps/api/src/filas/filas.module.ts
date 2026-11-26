@@ -18,11 +18,16 @@ export const FILAS = {
       inject: [ConfigService],
       useFactory: (config: ConfigService) => {
         const url = new URL(config.getOrThrow<string>('REDIS_URL'));
+        const db = Number(url.pathname.replace('/', '') || 0);
         return {
           connection: {
             host: url.hostname,
             port: Number(url.port || 6379),
-            password: url.password || undefined,
+            username: url.username ? decodeURIComponent(url.username) : undefined,
+            password: url.password ? decodeURIComponent(url.password) : undefined,
+            db: Number.isFinite(db) ? db : 0,
+            // rediss:// (Redis gerenciado com TLS) liga o TLS
+            tls: url.protocol === 'rediss:' ? {} : undefined,
             maxRetriesPerRequest: null,
           },
           prefix: 'orcestra',

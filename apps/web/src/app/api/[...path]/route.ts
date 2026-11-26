@@ -11,6 +11,9 @@ const HEADERS_REPASSADOS = ['content-type', 'authorization', 'cookie', 'user-age
 const HEADERS_REMOVIDOS = ['content-encoding', 'content-length', 'transfer-encoding', 'connection'];
 
 function ipReal(req: NextRequest): string | null {
+  // Netlify informa o IP do usuário neste cabeçalho (escrito pela própria borda, não pelo cliente)
+  const netlify = req.headers.get('x-nf-client-connection-ip')?.trim();
+  if (netlify) return netlify;
   const encadeado = req.headers.get('x-forwarded-for');
   const ultimo = encadeado?.split(',').pop()?.trim();
   return ultimo || req.headers.get('x-real-ip')?.trim() || null;
@@ -29,6 +32,13 @@ async function proxy(req: NextRequest, ctx: { params: Promise<{ path: string[] }
   // o último salto escrito pelo servidor/proxy mais próximo (a API usa trust proxy = 1 e lê esse valor).
   const ip = ipReal(req);
   if (ip) headers.set('x-forwarded-for', ip);
+  // API em outro provedor (Render): há saltos a mais no caminho, então o IP vai num cabeçalho
+  // autenticado pelo segredo compartilhado (a API só confia nele com o PROXY_SECRET igual).
+  const segredo = process.env.PROXY_SECRET;
+  if (segredo && ip) {
+    headers.set('x-orcestra-proxy', segredo);
+    headers.set('x-orcestra-ip', ip);
+  }
   const temCorpo = !['GET', 'HEAD'].includes(req.method);
   try {
     const res = await fetch(url, {

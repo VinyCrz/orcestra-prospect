@@ -7,6 +7,7 @@ import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import cookieParser from 'cookie-parser';
 import helmet from 'helmet';
 import { AppModule } from './app.module';
+import { ipDoProxy } from './common/ip-do-proxy';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
@@ -15,6 +16,9 @@ async function bootstrap() {
   app.useBodyParser('urlencoded', { extended: true, limit: '1mb' });
   // Atrás do proxy do web (1 salto): req.ip = IP que o proxy escreveu em X-Forwarded-For.
   app.set('trust proxy', 1);
+  // Em provedores separados (Netlify → Render) há saltos a mais: o proxy do web informa o IP real
+  // num cabeçalho autenticado por PROXY_SECRET (sem o segredo, o cabeçalho é ignorado).
+  app.use(ipDoProxy(config.get<string>('PROXY_SECRET')));
   app.use(helmet({ contentSecurityPolicy: false }));
   app.use(cookieParser());
   const origens = (config.get<string>('CORS_ORIGINS') ?? '')
