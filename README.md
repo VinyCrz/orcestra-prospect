@@ -87,15 +87,13 @@ EJs sem nenhum canal de contato ficam ocultas, sem ser apagadas. Detalhes em
 ## ⚙️ Como funciona
 
 ```mermaid
-flowchart LR
-  F["Fontes públicas<br/>federações · Receita · IBGE · sites"] --> C["Coletor<br/>scripts/coleta"]
-  C --> D[("data/ejs.json")]
-  D -->|seed e sincronização| DB[("PostgreSQL")]
-  W["Front Next.js<br/>apps/web"] -->|"/api/* (proxy)"| A["API NestJS<br/>apps/api"]
+flowchart TB
+  F["Fontes públicas"] --> C["Coletor"]
+  C --> DB[("PostgreSQL")]
+  U(["Time de prospecção"]) --> W["Front Next.js"]
+  W -->|"/api/*"| A["API NestJS"]
   A --> DB
-  A --> R[("Redis + BullMQ<br/>score, importação, alertas")]
-  S["@orcestra/shared<br/>schemas Zod"] -.-> W
-  S -.-> A
+  A --> R[("Redis + filas")]
 ```
 
 - **Monorepo pnpm** com quatro pacotes: o front (`apps/web`), a API (`apps/api`), o compartilhado
