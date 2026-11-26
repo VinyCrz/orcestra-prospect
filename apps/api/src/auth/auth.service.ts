@@ -123,19 +123,21 @@ export class AuthService {
     });
   }
 
-  /** Gera link de redefinição. Nesta etapa o link é apenas registrado no log do servidor. */
+  /** Cria um token de uso único e devolve o link. No banco fica só o hash. */
+  async gerarLinkRedefinicao(usuarioId: string, validadeMs: number) {
+    const token = randomBytes(32).toString('base64url');
+    const expiraEm = new Date(Date.now() + validadeMs);
+    await this.prisma.tokenRedefinicaoSenha.create({
+      data: { usuarioId, tokenHash: sha256(token), expiraEm },
+    });
+    return { link: `${this.config.get('WEB_URL')}/redefinir-senha?token=${token}`, expiraEm };
+  }
+
+  /** "Esqueci minha senha" (sem envio de e-mail): fora de produção o link vai para o log. */
   async solicitarRedefinicao(email: string): Promise<void> {
     const usuario = await this.prisma.usuario.findUnique({ where: { email: email.toLowerCase() } });
     if (!usuario || !usuario.ativo) return; // resposta idêntica para não revelar e-mails cadastrados
-    const token = randomBytes(32).toString('base64url');
-    await this.prisma.tokenRedefinicaoSenha.create({
-      data: {
-        usuarioId: usuario.id,
-        tokenHash: sha256(token),
-        expiraEm: new Date(Date.now() + 60 * 60 * 1000),
-      },
-    });
-    const link = `${this.config.get('WEB_URL')}/redefinir-senha?token=${token}`;
+    const { link } = await this.gerarLinkRedefinicao(usuario.id, 60 * 60 * 1000);
     if (this.config.get('NODE_ENV') !== 'production') {
       this.logger.log(`[esqueci-minha-senha] Link de redefinição para ${usuario.email}: ${link}`);
     } else {

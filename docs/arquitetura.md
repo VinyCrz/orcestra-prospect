@@ -15,7 +15,9 @@
 - Refresh token opaco de 7 dias em cookie `httpOnly`, `SameSite=Strict` (`Secure` com `COOKIE_SECURE=true`). No banco fica só o hash SHA-256. Cada uso rotaciona o token; reuso de token revogado derruba todas as sessões do usuário.
 - Guards globais: `JwtAuthGuard` (exige token e usuário ativo) e `RolesGuard` (`@Papeis(...)`). Rotas públicas: `@Public()`.
 - Papéis: ADMIN (gestão de usuários), GESTOR, SDR. Nesta etapa GESTOR e SDR só leem a base.
-- "Esqueci minha senha": token de uso único com validade de 1 h; o link vai para o log da API (resposta igual exista ou não o e-mail). Em produção (`NODE_ENV=production`) o link não é logado, então hoje só o ADMIN troca senhas.
+- Senha esquecida (sem envio de e-mail): o ADMIN gera em Usuários um link de uso único válido por 24 h (`POST /usuarios/:id/link-redefinicao`; gerar outro invalida os anteriores; audit `LINK_REDEFINICAO_GERADO`) e envia por WhatsApp. A tela `/esqueci-senha` só orienta a pedir o link. Em dev, `POST /auth/esqueci-senha` ainda grava o link no log.
+- O `JwtAuthGuard` guarda o usuário ativo em memória por 30 s para não ir ao banco a cada requisição; mudar papel ou desativar limpa o cache na hora (`esquecerUsuario`).
+- IP do usuário (rate limit e auditoria): o proxy do front manda só o IP real em `X-Forwarded-For`. No Render vem de `cf-connecting-ip` (escrito pela Cloudflare, não forjável); sem Cloudflare, do último salto.
 - Autocadastro (`/cadastro`): a pessoa cria a própria conta como **SDR** com o **código da equipe**. O ADMIN define, troca ou fecha o código no card "Código da equipe" em Usuários. O código fica só como hash argon2 em `config_sistema` (linha única); sem código, o cadastro está fechado. O código é conferido antes do e-mail (não dá para descobrir quem tem conta sem ele) e a rota tem limite só por IP (`RATE_LIMIT_CADASTRO_POR_MIN`, padrão 5/min). Audit: `USUARIO_AUTOCADASTRO`, `AUTOCADASTRO_RECUSADO`, `CODIGO_CADASTRO_DEFINIDO`, `CADASTRO_FECHADO`.
 - Front: `apps/web/src/middleware.ts` redireciona para `/login` sem cookie; o layout logado valida sessão e papel (a API valida de novo).
 

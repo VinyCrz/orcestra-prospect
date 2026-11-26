@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import type { AtualizarUsuarioInput, CriarUsuarioInput } from '@orcestra/shared';
 import { AuthService, usuarioPublico } from '../auth/auth.service';
+import { esquecerUsuario } from '../auth/guards/jwt-auth.guard';
 import { SenhaService } from '../auth/senha.service';
 import { PrismaService } from '../prisma/prisma.service';
 
@@ -58,9 +59,25 @@ export class UsuariosService {
         throw new BadRequestException('É preciso manter pelo menos um administrador ativo');
     }
     const usuario = await this.prisma.usuario.update({ where: { id }, data: dados });
+    esquecerUsuario(id);
     if (dados.ativo === false) await this.auth.revogarSessoes(id);
     await this.auditar(autorId, 'USUARIO_ATUALIZADO', id, dados);
     return usuarioPublico(usuario);
+  }
+
+  /** O ADMIN gera um link de redefinição (válido por 24 h) para mandar à pessoa por WhatsApp etc. */
+  async linkRedefinicao(id: string, autorId: string) {
+    const alvo = await this.prisma.usuario.findUnique({ where: { id } });
+    if (!alvo) throw new NotFoundException('Usuário não encontrado');
+    if (!alvo.ativo) throw new BadRequestException('Reative o usuário antes de gerar o link');
+    // só o link mais novo vale
+    await this.prisma.tokenRedefinicaoSenha.updateMany({
+      where: { usuarioId: id, usadoEm: null },
+      data: { usadoEm: new Date() },
+    });
+    const r = await this.auth.gerarLinkRedefinicao(id, 24 * 60 * 60 * 1000);
+    await this.auditar(autorId, 'LINK_REDEFINICAO_GERADO', id, { email: alvo.email });
+    return { link: r.link, expiraEm: r.expiraEm.toISOString() };
   }
 
   private auditar(usuarioId: string, acao: string, entidadeId: string, dados: object) {

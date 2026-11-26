@@ -4,7 +4,11 @@ import { JwtService } from '@nestjs/jwt';
 import type { Papel } from '@prisma/client';
 import { Papeis } from '../src/auth/decorators/papeis.decorator';
 import { Public } from '../src/auth/decorators/public.decorator';
-import { JwtAuthGuard } from '../src/auth/guards/jwt-auth.guard';
+import {
+  esquecerUsuario,
+  JwtAuthGuard,
+  limparCacheUsuarios,
+} from '../src/auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../src/auth/guards/roles.guard';
 import type { PrismaService } from '../src/prisma/prisma.service';
 
@@ -61,7 +65,10 @@ describe('JwtAuthGuard', () => {
   const prisma = { usuario: { findUnique: jest.fn() } };
   const guard = new JwtAuthGuard(new Reflector(), jwt, prisma as unknown as PrismaService);
 
-  beforeEach(() => prisma.usuario.findUnique.mockReset());
+  beforeEach(() => {
+    prisma.usuario.findUnique.mockReset();
+    limparCacheUsuarios();
+  });
 
   it('libera rota @Public sem token', async () => {
     await expect(guard.canActivate(ctx('publica', { headers: {} }))).resolves.toBe(true);
@@ -108,5 +115,20 @@ describe('JwtAuthGuard', () => {
     await expect(
       guard.canActivate(ctx('livreParaLogados', { headers: { authorization: `Bearer ${token}` } })),
     ).rejects.toBeInstanceOf(UnauthorizedException);
+  });
+
+  it('guarda o usuário ativo por um tempo e relê do banco depois de esquecerUsuario', async () => {
+    const token = await jwt.signAsync({ sub: 'u1', papel: 'SDR', email: 'a@b.c' });
+    const base = { id: 'u1', email: 'a@b.c', nome: 'A', papel: 'SDR' };
+    prisma.usuario.findUnique.mockResolvedValue({ ...base, ativo: true });
+    const req = () => ctx('livreParaLogados', { headers: { authorization: `Bearer ${token}` } });
+    await guard.canActivate(req());
+    await guard.canActivate(req());
+    expect(prisma.usuario.findUnique).toHaveBeenCalledTimes(1);
+
+    prisma.usuario.findUnique.mockResolvedValue({ ...base, ativo: false });
+    esquecerUsuario('u1');
+    await expect(guard.canActivate(req())).rejects.toBeInstanceOf(UnauthorizedException);
+    expect(prisma.usuario.findUnique).toHaveBeenCalledTimes(2);
   });
 });

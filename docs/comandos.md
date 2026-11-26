@@ -11,7 +11,7 @@ docker compose up -d postgres redis
 docker compose up -d --build          # stack completa (api, web, postgres, redis)
 docker compose ps
 docker compose logs api --tail 100
-docker compose logs api | grep -i esqueci   # link de redefinição de senha
+docker compose logs api | grep -i esqueci   # link de redefinição de senha (só em dev)
 docker compose exec api pnpm db:seed
 docker compose down                    # sem -v: preserva volumes (pgdata, redisdata)
 ```

@@ -60,6 +60,14 @@ export class UsuariosController {
     return this.usuarios.criar(body, autor.id);
   }
 
+  @Post(':id/link-redefinicao')
+  @ApiOperation({
+    summary: 'Gera link de redefinição de senha (24 h, uso único) para o ADMIN enviar (somente ADMIN).',
+  })
+  linkRedefinicao(@Param('id') id: string, @UsuarioAtual() autor: UsuarioAutenticado) {
+    return this.usuarios.linkRedefinicao(id, autor.id);
+  }
+
   @Patch(':id')
   @ApiBody({ type: AtualizarUsuarioDto })
   @ApiOperation({ summary: 'Edita nome/papel ou ativa/desativa usuário (somente ADMIN).' })

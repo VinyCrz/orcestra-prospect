@@ -100,7 +100,7 @@ describe('dashboard: período e permissão', () => {
     const valores = queryRaw.mock.calls.flatMap((c) => (c[0] as { values: unknown[] }).values);
     expect(valores).toContain('s1');
     expect(valores).not.toContain('outro');
-    expect(queryRaw).toHaveBeenCalledTimes(7);
+    expect(queryRaw).toHaveBeenCalledTimes(9);
   });
   it('métricas de base filtram temContato; atividade do SDR não', async () => {
     const queryRaw = jest.fn().mockResolvedValue([]);

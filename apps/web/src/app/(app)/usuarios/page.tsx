@@ -4,7 +4,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Loader2, Pencil, Plus, UserCheck, UserX } from 'lucide-react';
+import { KeyRound, Loader2, Pencil, Plus, UserCheck, UserX } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   criarUsuarioSchema,
@@ -19,6 +19,7 @@ import { Campo } from '@/components/form/campo';
 import { RequisitosSenha } from '@/components/form/requisitos-senha';
 import { PageHeader } from '@/components/page-header';
 import { CodigoEquipeCard } from '@/components/usuarios/codigo-equipe-card';
+import { LinkSenhaDialog } from '@/components/usuarios/link-senha-dialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -211,6 +212,7 @@ function Usuarios() {
   const qc = useQueryClient();
   const [criando, setCriando] = useState(false);
   const [editando, setEditando] = useState<UsuarioPublico | null>(null);
+  const [linkPara, setLinkPara] = useState<UsuarioPublico | null>(null);
   const q = useQuery({ queryKey: ['usuarios'], queryFn: () => api<UsuarioPublico[]>('/usuarios') });
   const alternar = useMutation({
     mutationFn: (u: UsuarioPublico) =>
@@ -291,6 +293,16 @@ function Usuarios() {
                         <Button
                           variant="ghost"
                           size="icon"
+                          disabled={!u.ativo}
+                          onClick={() => setLinkPara(u)}
+                          aria-label={`Gerar link de nova senha para ${u.nome}`}
+                          title="Link para nova senha"
+                        >
+                          <KeyRound />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
                           disabled={u.id === eu?.id || alternar.isPending}
                           onClick={() => alternar.mutate(u)}
                           aria-label={u.ativo ? `Desativar ${u.nome}` : `Reativar ${u.nome}`}
@@ -310,6 +322,7 @@ function Usuarios() {
       </div>
       <DialogCriar aberto={criando} onFechar={() => setCriando(false)} />
       <DialogEditar usuario={editando} onFechar={() => setEditando(null)} />
+      <LinkSenhaDialog usuario={linkPara} onFechar={() => setLinkPara(null)} />
     </>
   );
 }

@@ -58,7 +58,7 @@ O script faz um backup em `backups/`, recusa se a Neon já tiver tabelas e confe
 5. Teste `https://orcestra-prospect.onrender.com/api/health`: deve responder `"status":"ok"`.
 
 Se o Render der outro endereço ao serviço, ajuste `WEB_URL` no `render.yaml` (é usado no link de
-"esqueci minha senha").
+links de nova senha gerados pelo ADMIN).
 
 Depois do primeiro deploy, entre como ADMIN e, em **Usuários › Código da equipe**, defina o código
 para a equipe criar as próprias contas em `/cadastro`. Até lá, o cadastro fica fechado.

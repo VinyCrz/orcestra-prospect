@@ -30,7 +30,7 @@ export class DashboardService {
     const respostas = [...RESULTADOS_RESPOSTA];
     const num = (v: unknown) => Number(v ?? 0);
 
-    const [uf, funil, cobertura, porSdr, canais, motivos, tempo] = await Promise.all([
+    const [uf, funil, cobertura, porSdr, canais, motivos, tempo, dias, faixas] = await Promise.all([
       this.prisma.$queryRaw<{ uf: string | null; total: bigint; trabalhadas: bigint }[]>(Prisma.sql`
         SELECT e.uf, count(*) total, count(*) FILTER (WHERE e."statusProspeccao" <> 'NAO_TRABALHADA') trabalhadas
         FROM empresas_juniores e WHERE e."temContato" ${eResp} GROUP BY e.uf ORDER BY e.uf`),
@@ -78,6 +78,22 @@ export class DashboardService {
         JOIN empresas_juniores e ON e.id = h."empresaJuniorId" AND e."temContato"
         WHERE h."criadoEm" >= ${ini} AND h."criadoEm" < ${fim} AND h.de IS NOT NULL ${hUsu}
         GROUP BY h.de`),
+      // dia da semana no fuso de Brasília (0 = domingo)
+      this.prisma.$queryRaw<{ dia: number; total: bigint; respondidas: bigint; taxa: number | null }[]>(Prisma.sql`
+        SELECT extract(dow FROM i.data AT TIME ZONE 'UTC' AT TIME ZONE 'America/Sao_Paulo')::int dia, count(*) total,
+               count(*) FILTER (WHERE i.resultado::text = ANY(${respostas}::text[])) respondidas,
+               round(100.0 * count(*) FILTER (WHERE i.resultado::text = ANY(${respostas}::text[])) / NULLIF(count(*), 0), 1)::float8 taxa
+        FROM interacoes i WHERE i.data >= ${ini} AND i.data < ${fim} ${iUsu}
+        GROUP BY 1 ORDER BY 1`),
+      // o score acerta? das EJs já trabalhadas de cada faixa, quantas chegaram a reunião (fotografia atual)
+      this.prisma.$queryRaw<{ faixa: string; trabalhadas: bigint; reuniao: bigint; pct: number | null }[]>(Prisma.sql`
+        WITH r AS (SELECT DISTINCT h."empresaJuniorId" id FROM historico_status h
+                   WHERE h.para IN ('REUNIAO_AGENDADA', 'OPORTUNIDADE'))
+        SELECT e."faixaIcp"::text faixa, count(*) trabalhadas, count(r.id) reuniao,
+               round(100.0 * count(r.id) / NULLIF(count(*), 0), 1)::float8 pct
+        FROM empresas_juniores e LEFT JOIN r ON r.id = e.id
+        WHERE e."temContato" AND e."faixaIcp" IS NOT NULL AND e."statusProspeccao" <> 'NAO_TRABALHADA' ${eResp}
+        GROUP BY e."faixaIcp" ORDER BY e."faixaIcp"`),
     ]);
 
     return {
@@ -94,6 +110,12 @@ export class DashboardService {
       })),
       motivosPerda: motivos.map((r) => ({ motivoId: r.id, nome: r.nome ?? 'Sem motivo', total: num(r.total) })),
       tempoMedioEtapa: tempo.map((r) => ({ status: r.status, dias: r.dias })),
+      respostaPorDia: dias.map((r) => ({
+        dia: r.dia, total: num(r.total), respondidas: num(r.respondidas), taxaPct: r.taxa,
+      })),
+      reuniaoPorFaixa: faixas.map((r) => ({
+        faixa: r.faixa, trabalhadas: num(r.trabalhadas), comReuniao: num(r.reuniao), pct: r.pct,
+      })),
     };
   }
 }

@@ -118,7 +118,7 @@ function Celula({ id, ej }: { id: string; ej: EjLista }) {
     case 'federacao':
       return ej.federacao?.sigla ?? <Vazio />;
     case 'responsavel':
-      return ej.responsavel?.nome ?? <span className="text-muted-foreground">Sem responsável</span>;
+      return ej.responsavel?.nome ?? <span className="whitespace-nowrap text-muted-foreground">—</span>;
     case 'score':
       return <FaixaBadge faixa={ej.faixaIcp} score={ej.scoreIcp} />;
     default:

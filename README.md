@@ -76,8 +76,8 @@ pnpm dev                        # API em :3001 e web em :3000
 | Swagger     | http://localhost:3001/docs — **só com a API em dev** (`pnpm dev`); desligado com `NODE_ENV=production` (container) |
 | Healthcheck | http://localhost:3001/health (também via http://localhost:3000/api/health) |
 
-Usuário inicial: o que estiver em `ADMIN_EMAIL` / `ADMIN_SENHA` no `.env`
-(padrão do `.env.example`: `admin@orcestra.com.br` / `TroqueEstaSenha123!` — **troque**).
+Usuário inicial: o que estiver em `ADMIN_EMAIL` / `ADMIN_SENHA` no `.env` (defina uma senha forte antes do
+primeiro `pnpm db:seed`; para trocar depois: `pnpm trocar-senha <email>`).
 
 ### Scripts (raiz)
 
@@ -120,12 +120,13 @@ data/             ejs.json, ejs.csv, federacoes.json, RELATORIO.md (cache em dat
   imediatamente) e `RolesGuard` (`@Papeis('ADMIN')`). Rotas públicas usam `@Public()`.
 - Papéis: ver **Papéis e permissões** abaixo.
 - Senhas: mínimo 10 caracteres com letra, número e símbolo (`senhaSchema` do shared, usado na API, no front e no seed).
-- **Rate limit** (`@nestjs/throttler`): login 5/min por IP+e-mail; refresh, esqueci e redefinir senha 10/min por IP
+- **Rate limit** (`@nestjs/throttler`): login 5/min por IP+e-mail; cadastro 5/min por IP; refresh, esqueci e redefinir senha 10/min por IP
   (`RATE_LIMIT_LOGIN_POR_MIN` / `RATE_LIMIT_AUTH_POR_MIN`). Acima disso, 429 com mensagem em pt-BR.
 - `helmet`, `trust proxy` = 1 (o proxy do web sobrescreve `X-Forwarded-For`), CORS desligado por padrão.
 - Login com sucesso e falha vão para o AuditLog (`LOGIN_OK` / `LOGIN_FALHOU`, e-mail mascarado), com IP.
-- "Esqueci minha senha": gera token de uso único (1 h). **Fora de produção** o link vai para o log da API
-  (`docker compose logs api | grep esqueci`); em produção não. A resposta é idêntica exista ou não o e-mail.
+- Senha esquecida: não há envio de e-mail. O ADMIN gera em **Usuários** um link de uso único (24 h) e manda
+  para a pessoa (botão de WhatsApp). Em desenvolvimento, a rota `/auth/esqueci-senha` ainda grava o link no log.
+- Autocadastro em `/cadastro` com o código da equipe (definido pelo ADMIN em Usuários); a conta entra como SDR.
 - Front: o `middleware` redireciona para `/login` quando não há cookie de sessão; o layout logado valida a
   sessão e o papel (a API valida de novo).
 
@@ -235,7 +236,6 @@ Modo claro/escuro (segue o sistema, com alternância no topo) e layout responsiv
 | [`docs/arquitetura.md`](docs/arquitetura.md) | auth, proxy, banco, testes |
 | [`docs/base-ejs.md`](docs/base-ejs.md) | coletor, fontes, verificação de sites, LGPD da base |
 | [`docs/decisoes.md`](docs/decisoes.md) | decisões de projeto por etapa |
-| [`docs/compartilhar.md`](docs/compartilhar.md) | link público temporário (Cloudflare Tunnel) |
 | [`docs/deploy.md`](docs/deploy.md) | deploy gratuito: Render (front + API + Redis) e Neon (banco) |
 | [`docs/tamanho-arquivos.md`](docs/tamanho-arquivos.md) | arquivos grandes e divisões sugeridas |
 | [`brand/paleta.md`](brand/paleta.md) | cores e logo |

@@ -5,6 +5,22 @@ import { PrismaService } from '../../prisma/prisma.service';
 import type { JwtPayload, UsuarioAutenticado } from '../auth.types';
 import { IS_PUBLIC_KEY } from '../decorators/public.decorator';
 
+/**
+ * Cache curto do usuário (id → dados) para não consultar o banco em todo clique: o banco fica em outro
+ * servidor e cada ida custa dezenas de ms. Só guarda usuário ativo. Quem muda papel ou desativa chama
+ * `esquecerUsuario`, então a mudança vale na hora; o TTL é só uma rede de segurança.
+ */
+const TTL_CACHE_MS = 30_000;
+const cache = new Map<string, { usuario: UsuarioAutenticado; expira: number }>();
+
+export function esquecerUsuario(id: string) {
+  cache.delete(id);
+}
+
+export function limparCacheUsuarios() {
+  cache.clear();
+}
+
 /** Guard global: exige access token (Bearer) válido e usuário ativo, exceto em rotas @Public(). */
 @Injectable()
 export class JwtAuthGuard implements CanActivate {
@@ -32,6 +48,11 @@ export class JwtAuthGuard implements CanActivate {
     } catch {
       throw new UnauthorizedException('Token inválido ou expirado');
     }
+    const emCache = cache.get(payload.sub);
+    if (emCache && emCache.expira > Date.now()) {
+      req.usuario = { ...emCache.usuario };
+      return true;
+    }
     const usuario = await this.prisma.usuario.findUnique({
       where: { id: payload.sub },
       select: { id: true, email: true, nome: true, papel: true, ativo: true },
@@ -43,7 +64,8 @@ export class JwtAuthGuard implements CanActivate {
       nome: usuario.nome,
       papel: usuario.papel,
     };
-    req.usuario = autenticado;
+    cache.set(usuario.id, { usuario: autenticado, expira: Date.now() + TTL_CACHE_MS });
+    req.usuario = { ...autenticado };
     return true;
   }
 }

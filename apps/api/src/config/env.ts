@@ -22,7 +22,6 @@ const envSchema = z.object({
    * Com ele, a API usa o IP do usuário que o proxy informa em X-Orcestra-Ip (rate limit e auditoria por pessoa).
    * Vazio = comportamento padrão (trust proxy de 1 salto).
    */
-  PROXY_SECRET: z.string().min(32, 'PROXY_SECRET deve ter pelo menos 32 caracteres').optional().or(z.literal('')),
   RATE_LIMIT_LOGIN_POR_MIN: z.coerce.number().int().min(1).default(5),
   RATE_LIMIT_AUTH_POR_MIN: z.coerce.number().int().min(1).default(10),
   RATE_LIMIT_CADASTRO_POR_MIN: z.coerce.number().int().min(1).default(5),

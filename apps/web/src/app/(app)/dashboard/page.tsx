@@ -33,7 +33,11 @@ interface Dashboard {
   respostaPorCanal: { canal: string; total: number; respondidas: number; taxaPct: number | null }[];
   motivosPerda: { motivoId: string; nome: string; total: number }[];
   tempoMedioEtapa: { status: StatusProspeccao; dias: number }[];
+  respostaPorDia: { dia: number; total: number; respondidas: number; taxaPct: number | null }[];
+  reuniaoPorFaixa: { faixa: string; trabalhadas: number; comReuniao: number; pct: number | null }[];
 }
+
+const DIAS = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
 
 const PERIODOS = [
   { v: '7', l: 'Últimos 7 dias' },
@@ -129,6 +133,8 @@ function Conteudo() {
       sdrs: porValor(d.interacoesPorSdr.map((x) => ({ nome: x.nome, valor: x.total, rotulo: `${num.format(x.total)} (${num.format(x.reunioes)} reun.)` }))),
       canais: d.respostaPorCanal.map((x) => ({ nome: CANAL_INTERACAO_LABEL[x.canal as CanalInteracao] ?? x.canal, valor: x.taxaPct ?? 0, rotulo: `${pct(x.taxaPct ?? 0)} (${num.format(x.respondidas)}/${num.format(x.total)})` })),
       motivos: porValor(d.motivosPerda.map((x) => ({ nome: x.nome, valor: x.total }))),
+      dias: d.respostaPorDia.map((x) => ({ nome: DIAS[x.dia] ?? String(x.dia), valor: x.taxaPct ?? 0, rotulo: `${pct(x.taxaPct ?? 0)} (${num.format(x.respondidas)}/${num.format(x.total)})` })),
+      faixas: d.reuniaoPorFaixa.map((x) => ({ nome: `Faixa ${x.faixa}`, valor: x.pct ?? 0, rotulo: `${pct(x.pct ?? 0)} (${num.format(x.comReuniao)}/${num.format(x.trabalhadas)})` })),
       tempo: d.tempoMedioEtapa.map((x) => ({ nome: STATUS_PROSPECCAO_LABEL[x.status] ?? x.status, valor: x.dias, rotulo: `${num.format(Math.round(x.dias * 10) / 10)} d` })),
     };
   }, [d]);
@@ -223,6 +229,8 @@ function Conteudo() {
             )}
             <GraficoBarras {...comum} testId="g-canal" titulo="Taxa de resposta por canal" descricao="Interações respondidas / total" dados={dados?.canais} colunaValor="% respondidas" corIndice={4} formatoValor={pct} />
             <GraficoBarras {...comum} testId="g-motivos" titulo="Motivos de perda" dados={dados?.motivos} colunaValor="EJs perdidas" corIndice={6} />
+            <GraficoBarras {...comum} testId="g-dias" titulo="Melhor dia para contato" descricao="Taxa de resposta por dia da semana" dados={dados?.dias} colunaValor="% respondidas" corIndice={2} formatoValor={pct} />
+            <GraficoBarras {...comum} testId="g-faixas" titulo="O score acerta?" descricao="Das EJs já trabalhadas de cada faixa, % que chegou a reunião" dados={dados?.faixas} colunaValor="% com reunião" corIndice={3} formatoValor={pct} />
             <GraficoBarras {...comum} testId="g-tempo" titulo="Tempo médio por etapa" descricao="Dias" dados={dados?.tempo} colunaValor="Dias" corIndice={1} formatoValor={(v) => `${num.format(Math.round(v * 10) / 10)} d`} />
           </div>
         </>

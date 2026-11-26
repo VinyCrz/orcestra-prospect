@@ -1,74 +1,27 @@
-'use client';
-import { useState } from 'react';
 import Link from 'next/link';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { ArrowLeft, Loader2, MailCheck } from 'lucide-react';
-import { esqueciSenhaSchema, type EsqueciSenhaInput } from '@orcestra/shared';
+import { ArrowLeft, KeyRound } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Campo } from '@/components/form/campo';
-import { api } from '@/lib/api';
-import { toast } from 'sonner';
 
+/** Sem envio de e-mail: quem esqueceu a senha recebe um link gerado pelo administrador. */
 export default function EsqueciSenhaPage() {
-  const [enviado, setEnviado] = useState(false);
-  const { register, handleSubmit, formState } = useForm<EsqueciSenhaInput>({
-    resolver: zodResolver(esqueciSenhaSchema),
-  });
-
-  const onSubmit = handleSubmit(async (dados) => {
-    try {
-      await api('/auth/esqueci-senha', { method: 'POST', json: dados, semRenovar: true });
-      setEnviado(true);
-    } catch {
-      toast.error('Não foi possível enviar agora. Tente novamente.');
-    }
-  });
-
-  if (enviado) {
-    return (
-      <div className="grid gap-4 text-center">
-        <MailCheck className="mx-auto size-10 text-primary" />
-        <h1 className="text-xl font-semibold">Verifique seu e-mail</h1>
-        <p className="text-sm text-muted-foreground">
-          Se o e-mail estiver cadastrado, enviaremos um link para redefinir a senha. (Nesta versão,
-          o link aparece no log da API.)
-        </p>
-        <Button asChild variant="outline">
-          <Link href="/login">Voltar ao login</Link>
-        </Button>
-      </div>
-    );
-  }
-
   return (
-    <form onSubmit={onSubmit} className="grid gap-6" noValidate>
-      <div className="grid gap-1">
-        <h1 className="text-2xl font-semibold tracking-tight">Esqueci minha senha</h1>
-        <p className="text-sm text-muted-foreground">
-          Informe seu e-mail para receber um link de redefinição.
+    <div className="grid gap-6">
+      <div className="grid gap-3">
+        <span className="grid size-11 place-items-center rounded-xl bg-primary/10 text-primary">
+          <KeyRound className="size-5" />
+        </span>
+        <h1 className="text-2xl font-semibold tracking-tight">Esqueceu a senha?</h1>
+        <p className="text-sm leading-relaxed text-muted-foreground">
+          Peça a um administrador da equipe. Em <strong>Usuários</strong>, ele gera um link para
+          você criar uma senha nova e envia por WhatsApp ou e-mail. O link vale por 24 horas e só
+          pode ser usado uma vez.
         </p>
       </div>
-      <Campo id="email" label="E-mail" erro={formState.errors.email?.message}>
-        <Input
-          id="email"
-          type="email"
-          autoComplete="email"
-          aria-invalid={!!formState.errors.email}
-          {...register('email')}
-        />
-      </Campo>
-      <Button type="submit" disabled={formState.isSubmitting}>
-        {formState.isSubmitting && <Loader2 className="animate-spin" />}
-        Enviar link
+      <Button asChild variant="outline">
+        <Link href="/login">
+          <ArrowLeft /> Voltar ao login
+        </Link>
       </Button>
-      <Link
-        href="/login"
-        className="inline-flex items-center justify-center gap-1 text-sm text-muted-foreground hover:text-foreground"
-      >
-        <ArrowLeft className="size-4" /> Voltar ao login
-      </Link>
-    </form>
+    </div>
   );
 }

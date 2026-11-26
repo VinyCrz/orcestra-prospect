@@ -23,4 +23,3 @@ Sugestão para as páginas do front: extrair filtros, tabela e diálogos para `a
 ## Fora da contagem
 
 - `apps/api/prisma/schema.prisma` tem 433 linhas (schema, não código-fonte; manter em um arquivo é o padrão do Prisma).
-- `apps/web/f.tmp.mjs` (23 linhas) parece um script de depuração de Playwright esquecido na raiz do app; avaliar remover.
