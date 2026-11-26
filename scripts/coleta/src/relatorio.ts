@@ -169,12 +169,16 @@ function secaoLinks(l: ResultadoLinks | null): string {
 Cada site foi aberto nesta coleta. Site fora do ar é removido da EJ (fica \`null\`); se o site está no ar
 e a EJ não tinha Instagram/LinkedIn, o perfil publicado **no próprio site** é aproveitado quando casa com o
 nome da EJ ou com o endereço do site (perfis de clientes, parceiros, IES ou federação são ignorados).
+E-mail e telefone também vêm do próprio site (página inicial e de contato): e-mail só institucional; telefone
+só o canal divulgado em link de WhatsApp ou \`tel:\`, e nunca em site hospedado dentro do domínio de outro.
 
 - Sites verificados: ${l.verificados}
 - Sites descartados (fora do ar): ${l.descartados.length}
 - Endereço corrigido (http no lugar de https quebrado, ou com/sem "www."): ${l.urlCorrigida}
 - Instagram encontrado no site da EJ: ${l.instagramNovos}
 - LinkedIn encontrado no site da EJ: ${l.linkedinNovos}
+- E-mail institucional encontrado no site da EJ: ${l.emailNovos ?? 0}
+- Telefone/WhatsApp publicado pela EJ no próprio site: ${l.telefoneNovos ?? 0}
 ${
   l.descartados.length
     ? `\n| EJ | UF | Site descartado | Motivo |\n|---|---|---|---|\n${l.descartados.map((d) => `| ${d.nome.replace(/\|/g, '/')} | ${d.uf ?? '-'} | ${d.url} | ${d.motivo} |`).join('\n')}\n`

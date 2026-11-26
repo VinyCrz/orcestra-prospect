@@ -47,12 +47,13 @@ export class ScoreService implements OnApplicationBootstrap {
   /** Decisão: no boot, se houver EJ nunca calculada (faixaIcp null) enfileira o recálculo (jobId fixo = sem duplicar). */
   async onApplicationBootstrap() {
     try {
+      // sem faixa (EJ nova) ou marcada como defasada (ex.: sincronização da base mudou contatos)
       const pendente = await this.prisma.empresaJunior.findFirst({
-        where: { faixaIcp: null },
+        where: { OR: [{ faixaIcp: null }, { scoreVersao: null }] },
         select: { id: true },
       });
       if (pendente) {
-        await this.enfileirar(false, 'recalculo-inicial');
+        await this.enfileirar(false, `recalculo-inicial-${new Date().toISOString().slice(0, 13)}`);
         this.log.log('EJs sem score encontradas: recálculo inicial enfileirado');
       }
     } catch (e) {

@@ -6,7 +6,14 @@
  * O link de evidência entra em `fontes` da EJ. Entrada cujo CNPJ não existe mais na base é ignorada.
  */
 import { readFile } from 'node:fs/promises';
-import { normalizarCnpj, normalizarInstagram, normalizarUrl, type EjColetada } from '@orcestra/shared';
+import {
+  emailInstitucional,
+  normalizarCnpj,
+  normalizarInstagram,
+  normalizarTelefone,
+  normalizarUrl,
+  type EjColetada,
+} from '@orcestra/shared';
 
 export interface RedeEncontrada {
   cnpj: string;
@@ -15,6 +22,10 @@ export interface RedeEncontrada {
   instagram?: string | null;
   site?: string | null;
   linkedin?: string | null;
+  /** Só institucional (passa por `emailInstitucional`). */
+  emailInstitucional?: string | null;
+  /** Canal publicado pela EJ ou pela IES/federação como contato da EJ. */
+  telefoneInstitucional?: string | null;
   /** URL pública que confirma o vínculo do perfil com a EJ. */
   evidencia: string;
   /** Como o vínculo foi confirmado (ex.: "bio do Instagram cita a IES e a cidade"). */
@@ -55,6 +66,16 @@ export async function aplicarRedesEncontradas(
     const li = normalizarUrl(r.linkedin);
     if (li && !ej.linkedin) {
       ej.linkedin = li;
+      mudou = true;
+    }
+    const email = emailInstitucional(r.emailInstitucional, ej.nome);
+    if (email && !ej.emailInstitucional) {
+      ej.emailInstitucional = email;
+      mudou = true;
+    }
+    const tel = normalizarTelefone(r.telefoneInstitucional);
+    if (tel && !ej.telefoneInstitucional) {
+      ej.telefoneInstitucional = tel;
       mudou = true;
     }
     if (mudou) {

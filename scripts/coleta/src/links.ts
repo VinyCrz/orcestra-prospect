@@ -10,13 +10,24 @@
  *     linkedin.com/company/<perfil> no HTML. Só usa o perfil que casa com o nome da EJ ou com o
  *     endereço do site (evita perfis de clientes, parceiros, IES ou federação). Ambíguo → nada.
  *
+ *  4. Site no ar e sem e-mail/telefone na base → lê a página inicial e a de contato (link "contato"/"fale
+ *     conosco" do mesmo domínio). E-mail: `mailto:` ou texto, só institucional (`emailInstitucional`), com
+ *     preferência para o domínio do site. Telefone: só o canal publicado em link `wa.me`/WhatsApp ou `tel:`
+ *     (é o canal comercial que a EJ divulga); número solto no texto é ignorado. Mais de um número → nada.
+ *
  * Nada é inventado: o perfil vem de um link publicado pela própria EJ; o site vai na lista `fontes`.
  * Resultados ficam em cache (data/cache/links, 7 dias; `--atualizar` ignora).
  */
 import { createHash } from 'node:crypto';
 import { mkdir, readFile, stat, writeFile } from 'node:fs/promises';
 import path from 'node:path';
-import { normalizarInstagram, normalizarUrl, type EjColetada } from '@orcestra/shared';
+import {
+  emailInstitucional,
+  normalizarInstagram,
+  normalizarTelefone,
+  normalizarUrl,
+  type EjColetada,
+} from '@orcestra/shared';
 import { USER_AGENT, permitidoPorRobots } from './http.js';
 
 export interface SiteDescartado {
@@ -32,6 +43,8 @@ export interface ResultadoLinks {
   urlCorrigida: number;
   instagramNovos: number;
   linkedinNovos: number;
+  emailNovos: number;
+  telefoneNovos: number;
 }
 
 interface Checagem {
@@ -40,6 +53,8 @@ interface Checagem {
   urlUsada: string;
   instagram: string[];
   linkedin: string[];
+  emails?: string[];
+  telefones?: string[];
 }
 
 const TTL = 7 * 24 * 3600 * 1000;
@@ -80,6 +95,43 @@ async function baixar(url: string): Promise<{ status: number; html: string; fina
   }
 }
 
+const EMAILS_IGNORADOS = /(@(sentry|wixpress|example|exemplo|domain|dominio|email)\.|\.(png|jpe?g|gif|webp|svg)$|^(nome|seu|your|user)@)/i;
+
+function extrairContatos(html: string) {
+  const emails = new Set<string>();
+  for (const m of html.matchAll(/mailto:([^"'?<>\s]+)/gi)) emails.add(decodeURIComponent(m[1]).trim().toLowerCase());
+  const texto = html.replace(/<[^>]+>/g, ' ');
+  for (const m of texto.matchAll(/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g)) emails.add(m[0].toLowerCase());
+  const telefones = new Set<string>();
+  const links = [
+    ...html.matchAll(/wa\.me\/\+?(\d{10,13})/gi),
+    ...html.matchAll(/api\.whatsapp\.com\/send\/?\?phone=\+?(\d{10,13})/gi),
+    ...html.matchAll(/href=["']tel:([+\d\s().-]{10,20})["']/gi),
+  ];
+  for (const m of links) {
+    const t = normalizarTelefone(m[1]);
+    if (t) telefones.add(t);
+  }
+  return {
+    emails: [...emails].filter((e) => !EMAILS_IGNORADOS.test(e)),
+    telefones: [...telefones],
+  };
+}
+
+/** Link para a página de contato no mesmo domínio (só o primeiro). */
+function paginaDeContato(html: string, base: string): string | null {
+  for (const m of html.matchAll(/href=["']([^"'#]+)["']/gi)) {
+    if (!/contato|contact|fale-?conosco|fale_conosco/i.test(m[1])) continue;
+    try {
+      const u = new URL(m[1], base);
+      if (u.hostname === new URL(base).hostname && /^https?:$/.test(u.protocol)) return u.toString();
+    } catch {
+      /* href inválido */
+    }
+  }
+  return null;
+}
+
 async function baixarComNovaTentativa(url: string) {
   let r = await baixar(url);
   for (let i = 0; i < 2 && 'erro' in r && r.erro !== 'ENOTFOUND' && !TLS.includes(r.erro); i++) {
@@ -107,7 +159,8 @@ function extrairPerfis(html: string) {
 
 /** Faz a checagem (com cache em disco) de uma URL de site. */
 async function checar(url: string, cacheDir: string, ignorarCache: boolean): Promise<Checagem> {
-  const arq = path.join(cacheDir, `${createHash('sha1').update(url).digest('hex')}.json`);
+  // v2: inclui e-mails e telefones (cache antigo é ignorado)
+  const arq = path.join(cacheDir, `${createHash('sha1').update(`v2|${url}`).digest('hex')}.json`);
   if (!ignorarCache) {
     try {
       if (Date.now() - (await stat(arq)).mtimeMs < TTL) return JSON.parse(await readFile(arq, 'utf8')) as Checagem;
@@ -153,7 +206,16 @@ async function checar(url: string, cacheDir: string, ignorarCache: boolean): Pro
   } else {
     // 401/403/429: o site existe (bloqueia robôs); não há HTML para ler.
     const podeLer = r.html && (await permitidoPorRobots(r.final).catch(() => true));
-    res = { ok: true, urlUsada, ...(podeLer ? extrairPerfis(r.html) : { instagram: [], linkedin: [] }) };
+    res = { ok: true, urlUsada, instagram: [], linkedin: [], emails: [], telefones: [] };
+    if (podeLer) {
+      let html = r.html;
+      const contato = paginaDeContato(r.html, r.final);
+      if (contato && (await permitidoPorRobots(contato).catch(() => true))) {
+        const rc = await baixar(contato);
+        if (!('erro' in rc) && rc.status < 400) html += `\n${rc.html}`;
+      }
+      Object.assign(res, extrairPerfis(html), extrairContatos(html));
+    }
   }
   await mkdir(cacheDir, { recursive: true });
   await writeFile(arq, JSON.stringify(res));
@@ -189,6 +251,48 @@ function termosDaEj(ej: EjColetada, site: string): string[] {
   return [...termos];
 }
 
+function dominio(url: string): string | null {
+  try {
+    return new URL(url).hostname.replace(/^www\./, '');
+  } catch {
+    return null;
+  }
+}
+
+/** Site em subpasta de outro domínio (IES, wix, google sites...): contatos genéricos seriam do dono do domínio. */
+export function siteEmSubpasta(site: string): boolean {
+  try {
+    const u = new URL(site);
+    return u.pathname.replace(/\/+$/, '').split('/').filter(Boolean).length > 0 || /wixsite\.com|sites\.google\.com/.test(u.hostname);
+  } catch {
+    return true;
+  }
+}
+
+/** E-mail com o nome da EJ na parte local (não só "contato@"). */
+function emailComNome(email: string, nomeEj: string): boolean {
+  const local = compacto(email.split('@')[0]);
+  const termos = sem(nomeEj).split(/[^a-z0-9]+/).filter((p) => p.length >= 4 && !PALAVRAS_FRACAS.has(p));
+  const nc = compacto(nomeEj.replace(/\s[-–—(].*$/, '')).replace(/(jr|junior)$/, '');
+  return termos.some((t) => local.includes(t)) || (nc.length >= 3 && local.includes(nc));
+}
+
+/** E-mail institucional publicado no site: prefere o do domínio do site; vários sem critério → null. */
+export function escolherEmail(emails: string[], nomeEj: string, site: string): string | null {
+  let validos = [...new Set(emails.map((e) => emailInstitucional(e, nomeEj)).filter((e): e is string => !!e))];
+  if (siteEmSubpasta(site)) validos = validos.filter((e) => emailComNome(e, nomeEj));
+  const dom = dominio(site);
+  const doDominio = dom ? validos.filter((e) => e.endsWith(`@${dom}`)) : [];
+  if (doDominio.length) return doDominio[0];
+  return validos.length === 1 ? validos[0] : null;
+}
+
+/** Telefone publicado como canal da EJ (WhatsApp/tel). Só se houver um único número. */
+export function escolherTelefone(telefones: string[]): string | null {
+  const unicos = [...new Set(telefones)];
+  return unicos.length === 1 ? unicos[0] : null;
+}
+
 /** Escolhe o único perfil que casa com a EJ; vários candidatos ou nenhum → null. */
 export function escolherPerfil(perfis: string[], termos: string[]): string | null {
   const casam = perfis.filter((p) => {
@@ -202,7 +306,15 @@ export async function verificarLinks(
   ejs: EjColetada[],
   o: { cacheDir: string; ignorarCache: boolean; log?: (m: string) => void },
 ): Promise<ResultadoLinks> {
-  const res: ResultadoLinks = { verificados: 0, descartados: [], urlCorrigida: 0, instagramNovos: 0, linkedinNovos: 0 };
+  const res: ResultadoLinks = {
+    verificados: 0,
+    descartados: [],
+    urlCorrigida: 0,
+    instagramNovos: 0,
+    linkedinNovos: 0,
+    emailNovos: 0,
+    telefoneNovos: 0,
+  };
   const comSite = ejs.filter((e) => e.site);
   // Checagens em paralelo limitado (hosts diferentes); cada host recebe 1 a 3 requisições.
   const fila = [...comSite];
@@ -238,6 +350,22 @@ export async function verificarLinks(
           usouSite = true;
         }
       }
+      if (!ej.emailInstitucional) {
+        const e = escolherEmail(c.emails ?? [], ej.nome, ej.site!);
+        if (e) {
+          ej.emailInstitucional = e;
+          res.emailNovos++;
+          usouSite = true;
+        }
+      }
+      if (!ej.telefoneInstitucional) {
+        const t = siteEmSubpasta(ej.site!) ? null : escolherTelefone(c.telefones ?? []);
+        if (t) {
+          ej.telefoneInstitucional = t;
+          res.telefoneNovos++;
+          usouSite = true;
+        }
+      }
       if (usouSite) ej.fontes = [...new Set([...ej.fontes, ej.site!])];
     }
   };
@@ -245,7 +373,8 @@ export async function verificarLinks(
   res.descartados.sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
   o.log?.(
     `✔ Sites verificados: ${res.verificados} · descartados (fora do ar): ${res.descartados.length} · ` +
-      `Instagram novo: ${res.instagramNovos} · LinkedIn novo: ${res.linkedinNovos}`,
+      `Instagram novo: ${res.instagramNovos} · LinkedIn novo: ${res.linkedinNovos} · ` +
+        `e-mail novo: ${res.emailNovos} · telefone novo: ${res.telefoneNovos}`,
   );
   return res;
 }

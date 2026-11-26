@@ -200,6 +200,8 @@ model ConfigSistema {
   /// Hash argon2 do código da equipe para o autocadastro. Nulo = cadastro fechado.
   codigoCadastroHash        String?
   codigoCadastroAlteradoEm  DateTime?
+  /// sha256 do data/ejs.json já aplicado no banco por prisma/sincronizar-base.ts (evita reprocessar)
+  baseEjsHash               String?
   atualizadoEm              DateTime  @updatedAt
 
   @@map("config_sistema")

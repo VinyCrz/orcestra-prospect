@@ -4,6 +4,9 @@ set -u
 
 cd /app/apps/api
 npx prisma migrate deploy || { echo "Falha nas migrations"; exit 1; }
+# Contatos novos da coleta (só preenche campos vazios; não faz nada se data/ejs.json não mudou).
+# Falha aqui não impede a subida; limite de 5 min para não travar o deploy.
+timeout 300 npx tsx prisma/sincronizar-base.ts || echo "Aviso: sincronização da base de EJs não concluída"
 
 API_PORT=3001 node --max-old-space-size=220 dist/main.js &
 API=$!
