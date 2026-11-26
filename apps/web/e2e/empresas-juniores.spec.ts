@@ -48,6 +48,7 @@ test('painel de filtros aplica filtros na URL e itens de menu respeitam o papel'
   await expect(nav.getByRole('link', { name: 'Importações' })).toBeVisible();
 
   await page.getByTestId('abrir-filtros').click();
+  await page.getByRole('dialog').getByText('Localização', { exact: true }).click();
   await page.getByRole('checkbox', { name: new RegExp(`^${UF} — `) }).check();
   await page.getByRole('button', { name: 'Aplicar filtros' }).click();
   await expect(page).toHaveURL(new RegExp(`uf=${UF}`));

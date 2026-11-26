@@ -100,6 +100,7 @@ test('detalhe da EJ mostra o card de score', async ({ page }) => {
 test('filtro por faixa aparece na URL', async ({ page }) => {
   await entrar(page);
   await page.getByTestId('abrir-filtros').click();
+  await page.getByRole('dialog').getByText('Prospecção', { exact: true }).click();
   await page.getByRole('group', { name: /Faixa de ICP/ }).getByLabel('Faixa A').check();
   await page.getByRole('button', { name: 'Aplicar filtros' }).click();
   await expect(page).toHaveURL(/faixaIcp=A/);
