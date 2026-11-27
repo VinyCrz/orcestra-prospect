@@ -35,8 +35,8 @@ Detalhes para quem vai rodar, manter ou auditar o projeto. A visão geral está 
   imediatamente) e `RolesGuard` (`@Papeis('ADMIN')`). Rotas públicas usam `@Public()`.
 - Papéis: ver **Papéis e permissões** abaixo.
 - Senhas: mínimo 10 caracteres com letra, número e símbolo (`senhaSchema` do shared, usado na API, no front e no seed).
-- **Rate limit** (`@nestjs/throttler`): login 5/min por IP+e-mail; cadastro 5/min por IP; refresh, esqueci e redefinir senha 10/min por IP
-  (`RATE_LIMIT_LOGIN_POR_MIN` / `RATE_LIMIT_AUTH_POR_MIN`). Acima disso, 429 com mensagem em pt-BR.
+- **Rate limit** (`@nestjs/throttler`): login 5/min por IP+e-mail; cadastro 30/min por IP; refresh, esqueci e redefinir senha 60/min por IP
+  (`RATE_LIMIT_LOGIN_POR_MIN` / `RATE_LIMIT_AUTH_POR_MIN` / `RATE_LIMIT_CADASTRO_POR_MIN`; os limites por IP são folgados porque a equipe costuma estar no mesmo Wi-Fi). Acima disso, 429 com mensagem em pt-BR.
 - `helmet`, `trust proxy` = 1 (o proxy do web sobrescreve `X-Forwarded-For`), CORS desligado por padrão.
 - Login com sucesso e falha vão para o AuditLog (`LOGIN_OK` / `LOGIN_FALHOU`, e-mail mascarado), com IP.
 - Senha esquecida: não há envio de e-mail. O ADMIN gera em **Usuários** um link de uso único (24 h) e manda
@@ -66,7 +66,7 @@ Copie `.env.example` para `.env`. Todas estão comentadas no arquivo; as princip
 | `WEB_URL` | URL pública do front (link de redefinição de senha) |
 | `CORS_ORIGINS` | vazio = CORS desligado (o browser só fala com a API pelo proxy `/api/*`) |
 | `SUPRESSAO_PEPPER` | pepper do HMAC da lista de supressão LGPD — `openssl rand -hex 32`; **obrigatório em produção, não troque depois de usar** |
-| `RATE_LIMIT_LOGIN_POR_MIN`, `RATE_LIMIT_AUTH_POR_MIN` | rate limit (padrão 5 e 10). para rodar a suíte Playwright, suba temporariamente para 30 e 120 |
+| `RATE_LIMIT_LOGIN_POR_MIN`, `RATE_LIMIT_AUTH_POR_MIN` | rate limit (padrão 5 e 60). para rodar a suíte Playwright, suba temporariamente para 30 e 120 |
 | `API_INTERNAL_URL` | URL que o servidor Next usa para chegar na API |
 | `ADMIN_NOME`, `ADMIN_EMAIL`, `ADMIN_SENHA` | ADMIN criado pelo seed (senha precisa atender à política) |
 

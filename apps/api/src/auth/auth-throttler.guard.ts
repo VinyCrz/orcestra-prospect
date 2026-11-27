@@ -31,11 +31,11 @@ export class IpThrottlerGuard extends AuthThrottlerGuard {
   }
 }
 
-/** Autocadastro: 5/min por IP (RATE_LIMIT_CADASTRO_POR_MIN). */
+/** Autocadastro: 30/min por IP (equipe no mesmo Wi-Fi) (RATE_LIMIT_CADASTRO_POR_MIN). */
 export const LimiteCadastro = () =>
   applyDecorators(
     UseGuards(IpThrottlerGuard),
-    Throttle({ default: { limit: lerLimite('RATE_LIMIT_CADASTRO_POR_MIN', 5), ttl: MINUTO } }),
+    Throttle({ default: { limit: lerLimite('RATE_LIMIT_CADASTRO_POR_MIN', 30), ttl: MINUTO } }),
   );
 
 /** Login: 5/min por IP+e-mail (RATE_LIMIT_LOGIN_POR_MIN). */
@@ -45,9 +45,9 @@ export const LimiteLogin = () =>
     Throttle({ default: { limit: lerLimite('RATE_LIMIT_LOGIN_POR_MIN', 5), ttl: MINUTO } }),
   );
 
-/** Refresh / esqueci-senha / redefinir-senha: 10/min por IP (RATE_LIMIT_AUTH_POR_MIN). */
+/** Refresh / esqueci-senha / redefinir-senha: 60/min por IP (equipe no mesmo Wi-Fi) (RATE_LIMIT_AUTH_POR_MIN). */
 export const LimiteAuth = () =>
   applyDecorators(
     UseGuards(AuthThrottlerGuard),
-    Throttle({ default: { limit: lerLimite('RATE_LIMIT_AUTH_POR_MIN', 10), ttl: MINUTO } }),
+    Throttle({ default: { limit: lerLimite('RATE_LIMIT_AUTH_POR_MIN', 60), ttl: MINUTO } }),
   );

@@ -23,8 +23,8 @@ const envSchema = z.object({
    * Vazio = comportamento padrão (trust proxy de 1 salto).
    */
   RATE_LIMIT_LOGIN_POR_MIN: z.coerce.number().int().min(1).default(5),
-  RATE_LIMIT_AUTH_POR_MIN: z.coerce.number().int().min(1).default(10),
-  RATE_LIMIT_CADASTRO_POR_MIN: z.coerce.number().int().min(1).default(5),
+  RATE_LIMIT_AUTH_POR_MIN: z.coerce.number().int().min(1).default(60),
+  RATE_LIMIT_CADASTRO_POR_MIN: z.coerce.number().int().min(1).default(30),
 }).superRefine((v, ctx) => {
   if (v.NODE_ENV === 'production' && (v.SUPRESSAO_PEPPER ?? '').length < 32) {
     ctx.addIssue({
